@@ -6,7 +6,7 @@ Each item needs a concrete user benefit, regression tests and a documented limit
 - Add CI-friendly SARIF output with stable rule IDs and sanitized member paths.
 - Document and test npm `browser` remapping semantics and conditional exports coverage; avoid claiming complete Node resolution.
 - Add explicit support for scoped-package name/version validation and semver syntax checks without introducing online dependencies.
-- Add tests for pathological PAX metadata, GNU longnames and nested manifest JSON depth.
+- Add tests for pathological PAX metadata and GNU longnames. Manifest JSON now has an explicit tested nesting budget; keep malformed-input and escape fixtures when extending it.
 - Provide a machine-readable JSON schema for reports, with backward-compatibility fixtures.
 - Add a streaming implementation for the compressed hash input, keeping the existing decompression and manifest budgets intact.
 

@@ -28,11 +28,27 @@ Add `--integrity 'sha512-BASE64_VALUE'` to check an expected SRI token obtained 
 - Compressed size, decompressed size including tar padding/metadata, member count, individual and total payload sizes, and manifest size have independent limits.
 - Rejects absolute paths, traversal, noncanonical paths, Windows-style paths, control characters, duplicate members, links, device/special members, sparse metadata and setuid/setgid bits.
 - Reads gzip through its checksum/footer, including after tar's end marker.
-- Validates `package/package.json`, duplicate JSON keys, expected name/version, and optional SHA-512 integrity.
+- Validates `package/package.json`, duplicate JSON keys, expected name/version, and optional SHA-512 integrity. An iterative scan bounds JSON container depth before parsing or traversing entrypoints.
 - Checks exact local `bin`/`exports` targets and common `main` resolution candidates. Reports wildcard exports as unverified patterns.
 - Reports license metadata/file absence and declared install/prepare hooks for review.
 
-Defaults: 64 MiB compressed, 256 MiB decompressed stream, 32 MiB per file, 128 MiB total regular files, 1 MiB manifest, 20,000 members. Python callers can supply `Limits(...)`.
+Defaults: 64 MiB compressed, 256 MiB decompressed stream, 32 MiB per file, 128 MiB total regular files, 1 MiB manifest, 20,000 members, and 64 nested JSON containers in the manifest. Python callers can supply `Limits(...)`.
+
+The manifest's root object counts as depth 1; objects and arrays add levels,
+while brackets, escaped quotes and backslashes inside JSON strings do not.
+Over-budget input fails with `manifest_depth_exceeded` before the JSON parser
+or recursive export traversal runs. This budget is independent of manifest byte
+size. Invalid JSON within the depth budget still fails the ordinary JSON checks.
+
+```python
+from npm_tarball_audit import Limits, audit
+
+report = audit("example.tgz", limits=Limits(manifest_depth=32))
+```
+
+Depth limits must be positive integers, excluding booleans. The CLI uses the
+default of 64. Raising a caller's limit does not override Python's own parser
+limits; inputs rejected by that parser remain failed audits.
 
 **A passing audit is not a malware verdict or a recommendation to execute the package.** Dependency vulnerabilities, publisher authenticity, runtime behavior and a complete Node resolver are outside its scope. Optional expected integrity is only as trustworthy as the source from which you obtained it. License checks are inventory checks, not a legal assessment.
 

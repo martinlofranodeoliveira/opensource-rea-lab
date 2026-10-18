@@ -26,9 +26,10 @@ class Limits:
     total_file_bytes: int = 128 * 1024 * 1024
     manifest_bytes: int = 1024 * 1024
     members: int = 20_000
+    manifest_depth: int = 64
 
     def __post_init__(self) -> None:
-        if any(not isinstance(v, int) or v <= 0 for v in vars(self).values()):
+        if any(isinstance(v, bool) or not isinstance(v, int) or v <= 0 for v in vars(self).values()):
             raise ValueError("All limits must be positive integers")
 
 
@@ -83,6 +84,38 @@ def _object(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 def _invalid_constant(value: str) -> object:
     raise ValueError(f"Non-JSON numeric constant: {value}")
+
+
+def _manifest_depth_exceeded(data: bytes, maximum: int) -> bool:
+    """Iteratively count JSON container depth without parsing or recursion."""
+    depth = 0
+    in_string = False
+    skip_next = False
+
+    for raw in data:
+        if skip_next:
+            skip_next = False
+            continue
+
+        if in_string:
+            if raw == 0x5C:
+                skip_next = True
+            elif raw == 0x22:
+                in_string = False
+            continue
+
+        if raw == 0x22:
+            in_string = True
+            continue
+
+        if raw in (0x7B, 0x5B):
+            depth += 1
+            if depth > maximum:
+                return True
+        elif raw in (0x7D, 0x5D):
+            depth -= 1
+
+    return False
 
 
 def _targets(manifest: dict) -> list[tuple[str, str, bool]]:
@@ -251,6 +284,19 @@ def audit(path: str | Path, *, limits: Limits | None = None,
         if manifest_data is None:
             add("error", "manifest_missing", "package/package.json is missing")
         else:
+            if _manifest_depth_exceeded(manifest_data, limits.manifest_depth):
+                add(
+                    "error",
+                    "manifest_depth_exceeded",
+                    f"package.json JSON nesting exceeds the configured depth limit of {limits.manifest_depth}"
+                )
+                if include_inventory:
+                    report["inventory"] = inventory
+                if any(f["level"] == "error" for f in findings):
+                    report["status"] = "fail"
+                elif findings:
+                    report["status"] = "warning"
+                return report
             manifest = json.loads(manifest_data.decode("utf-8"), object_pairs_hook=_object,
                                   parse_constant=_invalid_constant)
             if not isinstance(manifest, dict):
