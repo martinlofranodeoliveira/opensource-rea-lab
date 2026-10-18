@@ -147,6 +147,25 @@ def audit(path: str | Path, *, limits: Limits | None = None,
     manifest_data: bytes | None = None
     files: set[str] = set()
     seen: set[str] = set()
+    regular_files: set[str] = set()
+    seen_ancestors: set[str] = set()
+
+    def ancestors(name: str) -> list[str]:
+        parts = name.split("/")
+        out: list[str] = []
+        current = ""
+        for part in parts[:-1]:
+            current = part if not current else current + "/" + part
+            out.append(current)
+        return out
+
+    def add_collision(member_name: str, ancestor: str, descendant: str) -> None:
+        add(
+            "error",
+            "path_collision",
+            f"Regular file {ancestor!r} is also used as a directory ancestor for {descendant!r}",
+            member_name
+        )
     try:
         # Read at most the configured compressed budget, even if the file grows.
         with open(path, "rb") as source:
@@ -177,6 +196,14 @@ def audit(path: str | Path, *, limits: Limits | None = None,
                     if name in seen:
                         add("error", "duplicate_member", "Duplicate member path; extraction order would affect its contents", member.name)
                     seen.add(name)
+
+                    for ancestor in ancestors(name):
+                        if ancestor in regular_files:
+                            add_collision(member.name, ancestor, name)
+                        seen_ancestors.add(ancestor)
+
+                    if member.isfile() and name in seen_ancestors:
+                        add_collision(member.name, name, name)
                     if member.issym() or member.islnk():
                         add("error", "link_member", "Symbolic and hard links are not accepted", member.name)
                         continue
@@ -188,6 +215,8 @@ def audit(path: str | Path, *, limits: Limits | None = None,
                         continue
                     if member.mode & 0o6000:
                         add("error", "privileged_mode", "setuid/setgid mode bits are not accepted", member.name)
+                    if member.isfile():
+                        regular_files.add(name)
                     if not member.isfile():
                         continue
                     if member.size < 0 or member.size > limits.member_bytes:
