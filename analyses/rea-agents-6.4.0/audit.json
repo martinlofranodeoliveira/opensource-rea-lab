@@ -1,0 +1,24 @@
+{
+  "schema": "npm-tarball-audit/v1",
+  "status": "warning",
+  "sha256": "59eb1604b8db75f522d4a975c36ce6b4a2ad465e43bad165f9a8f728391db9b8",
+  "archive_bytes": 1825761,
+  "decompressed_bytes_read": 8675328,
+  "member_count": 1161,
+  "regular_file_bytes": 7776450,
+  "package": {
+    "name": "rea-agents",
+    "version": "6.4.0",
+    "license": "MIT"
+  },
+  "findings": [
+    {
+      "level": "warning",
+      "code": "lifecycle_script",
+      "message": "Lifecycle script 'prepare' is declared; it was not executed"
+    }
+  ],
+  "scope": "offline archive metadata, paths, local entrypoints and integrity only",
+  "package_executed": false,
+  "files_extracted": false
+}

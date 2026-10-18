@@ -1,0 +1,78 @@
+{
+  "format": "sanitized-analysis-excerpt/v1",
+  "note": "Analyst-selected derivative; not canonical REA Evidence. Machine-local paths and raw vendor graph are omitted. Evidence IDs identify the original session records, not a portable replay bundle.",
+  "target": {
+    "name": "rea-agents",
+    "version": "6.4.0",
+    "tarball_sha256": "59eb1604b8db75f522d4a975c36ce6b4a2ad465e43bad165f9a8f728391db9b8"
+  },
+  "entrypoint_slice": {
+    "files": [
+      {
+        "path": "package.json",
+        "sha256": "1c6244e5689db5354fffc0e92f4ee0e0237c3a6d645de564ade2d8375fa570f9"
+      },
+      {
+        "path": "scripts/rea.mjs",
+        "sha256": "3554288a08c455fa419dad662d73710fb17debe94b9e71dd1282761117c5981e"
+      }
+    ],
+    "rea_directory_sha256": "329568cd34b1bceef0fefd2a99ab6b38d42f64e3aec20c31c8006595fa6b64a3",
+    "parent_evidence_id": "ev_4ad6ace932769562625303a8a20aab6256354762894105d4dfc4971a800a1870",
+    "summary_evidence_id": "ev_bd0669b55f29f19e1e4c1dbc3c8aa4e327a9f132898a207be1d2b6c2b1631de9",
+    "asset_view_evidence_id": "ev_6f50f7de894545bac872a54d6c8e12e7180ea105063901caec1cc4d6a58a9db6",
+    "asset_view_digest": "c94974c1be6f437566e21354c7a37a8452f09258bf1124af551dd081973d251c",
+    "statistics": {
+      "relevant_files": 2,
+      "nested_asar_containers": 0,
+      "text_bytes_read": 23324,
+      "invalid_utf8_files": 0,
+      "parsed_javascript_files": 1,
+      "visited_ast_nodes": 469,
+      "findings": 14,
+      "modules": 0,
+      "parse_failures": 0
+    },
+    "application_coverage": {
+      "status": "complete",
+      "truncated": false,
+      "omitted_count": 0,
+      "limits": []
+    },
+    "semantic_coverage_status": "unknown",
+    "semantic_unknowns": 110,
+    "limits": {
+      "max_heap_mb": 256,
+      "analysis_timeout_ms_per_source": 10000
+    },
+    "limitations": [
+      "The slice contains two published files only; referenced dist/* modules are outside its boundary.",
+      "JavaScript was parsed as inert text and was never executed.",
+      "Application inventory coverage applies only to this slice. Semantic coverage remains unknown.",
+      "Static relationships do not establish runtime execution, correct behavior, safety or absence of undeclared functionality."
+    ]
+  },
+  "broader_attempt": {
+    "parent_evidence_id": "ev_080fa0bdb46755908d785ab98c2c1f92b05cedf9a9bb29e5e31eb0a7ead4decb",
+    "summary_evidence_id": "ev_989e88e8aaa8c0df42389c1cbd8ca0dbba67c61d84d76609b7a4b2ebbffca8c0",
+    "rea_directory_sha256": "cfd425c92c13424fc9274a024738b4d61f186169f2c130af242ef1e7fcd72099",
+    "statistics": {
+      "relevant_files": 1121,
+      "nested_asar_containers": 0,
+      "text_bytes_read": 6430521,
+      "invalid_utf8_files": 0,
+      "parsed_javascript_files": 1118,
+      "visited_ast_nodes": 745109,
+      "findings": 5883,
+      "modules": 0,
+      "parse_failures": 0
+    },
+    "application_coverage_status": "partial",
+    "semantic_coverage_status": "partial",
+    "semantic_unknowns": 20888,
+    "limitations": [
+      "Result/worker budgets limited expanded relationships and semantic analysis. Broad semantic conclusions are unsupported.",
+      "The initial broad request was interrupted; retained partial Evidence was recovered without rerunning the producer."
+    ]
+  }
+}
