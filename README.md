@@ -79,9 +79,49 @@ The limit must be a positive integer, excluding booleans.
 
 Results are sorted by path and contain fresh records, without mutating either
 input. Each `changed` item contains `path` and complete `before`/`after` records.
-This core API compares inventory metadata only. A comparison command, report
-loading and entrypoint-declaration comparison remain future work. A file diff
-does not determine whether either package is safe or whether its audits passed.
+This core API compares inventory metadata only. A file diff does not determine
+whether either package is safe or whether its audits passed.
+
+### Compare saved reports
+
+Generate reports with inventories explicitly enabled, then compare them offline:
+
+```sh
+PYTHONPATH=src python3 -m npm_tarball_audit before.tgz --include-inventory --json > before.json
+PYTHONPATH=src python3 -m npm_tarball_audit after.tgz --include-inventory --json > after.json
+PYTHONPATH=src python3 -m npm_tarball_audit --compare before.json after.json --json
+```
+
+Omit the final `--json` for a summary and escaped file paths. A successful
+comparison returns the same four fields as `compare_inventories`. Exit code `0`
+means unchanged inventory; `1` means added, removed or changed files; `2` means
+invalid reports, unreadable files or arguments. A change is not an audit failure
+or malware finding. Audit-only options cannot be combined with `--compare`.
+
+Each input must be a regular, non-symlink UTF-8 file of at most 16 MiB. Reads are
+bounded; directories, devices and FIFOs are refused. The loader requires schema
+`npm-tarball-audit/v1`, status `pass` or `warning`, explicit false
+`package_executed`/`files_extracted` flags, and an `inventory` list. Reports from
+failed audits are refused because their inventories may be partial. Reports
+created without `--include-inventory` are also refused. Inspect findings and
+identity separately; these fields are validation, not proof of report provenance.
+
+The whole JSON text has a default depth budget of 64 containers, with the root
+object at depth 1. Bytes and depth are checked before parsing. Duplicate keys,
+invalid UTF-8, nonfinite numbers, malformed entries and more than 20,000 entries
+per report are rejected. Extra report metadata is accepted within these budgets
+but is not returned. Invalid input produces no partial comparison or raw input
+in diagnostics.
+
+Python callers can use the pure
+`npm_tarball_audit.report.parse_inventory_report(text, *, max_bytes=16777216,
+max_depth=64, max_entries=20000)` API with explicitly supplied text. All budgets
+are positive integers, excluding booleans. The function reads no files and
+returns fresh, sorted inventory records validated by the comparator. Callers
+deliberately comparing partial inventories can still use `compare_inventories`
+directly; the ordinary report boundary does not silently discard a failed status.
+Entrypoint-declaration comparison remains future work. Unchanged inventory does
+not establish package equivalence or safety.
 
 **A passing audit is not a malware verdict or a recommendation to execute the package.** Dependency vulnerabilities, publisher authenticity, runtime behavior and a complete Node resolver are outside its scope. Optional expected integrity is only as trustworthy as the source from which you obtained it. License checks are inventory checks, not a legal assessment.
 
