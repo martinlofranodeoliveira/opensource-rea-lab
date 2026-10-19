@@ -8,6 +8,7 @@ import sys
 
 from .audit import audit
 from .compare import compare_inventories
+from .sarif import to_sarif
 
 MAX_REPORT_BYTES = 16 * 1024 * 1024
 
@@ -59,11 +60,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--expected-version")
     parser.add_argument("--integrity", help="Expected sha512-base64 SRI token from a trusted source")
     parser.add_argument("--include-inventory", action="store_true", help="Include each regular file path, size and SHA-256")
-    parser.add_argument("--json", action="store_true", help="Emit a machine-readable report")
+    output_format = parser.add_mutually_exclusive_group()
+    output_format.add_argument("--json", action="store_true", help="Emit a machine-readable report")
+    output_format.add_argument("--sarif", action="store_true", help="Emit sanitized SARIF 2.1.0 without source locations")
     args = parser.parse_args(argv)
     if args.compare:
         if args.archive is not None or any(value is not None for value in
-                                           (args.expected_name, args.expected_version, args.integrity)) or args.include_inventory:
+                                           (args.expected_name, args.expected_version, args.integrity)) or args.include_inventory or args.sarif:
             parser.error("--compare accepts only BEFORE, AFTER and optional --json; omit audit options")
         return _compare_reports(args.compare, args.json)
     if args.archive is None:
@@ -71,7 +74,14 @@ def main(argv: list[str] | None = None) -> int:
     report = audit(args.archive, expected_name=args.expected_name,
                    expected_version=args.expected_version, integrity=args.integrity,
                    include_inventory=args.include_inventory)
-    if args.json:
+    if args.sarif:
+        try:
+            document = to_sarif(report)
+        except ValueError:
+            print("Cannot export SARIF: use a valid, bounded offline audit report.", file=sys.stderr)
+            return 2
+        print(json.dumps(document, indent=2, ensure_ascii=True))
+    elif args.json:
         print(json.dumps(report, indent=2, ensure_ascii=True))
     else:
         package = report["package"] or {}

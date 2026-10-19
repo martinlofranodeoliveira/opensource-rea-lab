@@ -3,7 +3,6 @@
 Each item needs a concrete user benefit, regression tests and a documented limit. Completed work is removed from this queue and described in release notes.
 
 - Extend the inventory comparison command with explicit entrypoint-declaration comparison. Pure inventory comparison, bounded JSON report loading and `--compare BEFORE AFTER` are available; they compare regular-file paths, sizes and hashes, not entrypoint semantics. Do not store vendor source.
-- Add CI-friendly SARIF output with stable rule IDs and sanitized member paths.
 - Document and test npm `browser` remapping semantics and conditional exports coverage; avoid claiming complete Node resolution.
 - Add explicit support for scoped-package name/version validation and semver syntax checks without introducing online dependencies.
 - Add tests for pathological PAX metadata and GNU longnames. Manifest JSON now has an explicit tested nesting budget; keep malformed-input and escape fixtures when extending it.
@@ -11,3 +10,9 @@ Each item needs a concrete user benefit, regression tests and a documented limit
 - Add a streaming implementation for the compressed hash input, keeping the existing decompression and manifest budgets intact.
 
 New REA cases need a clearly identified public artifact, license/source links, fixed digest, investigation question, evidence IDs and explicit unanswered questions. A new project or analysis must justify a useful purpose before creation.
+
+## Completed
+
+- SARIF 2.1.0 export through a pure API and `--sarif`, with stable rule IDs,
+  bounded escaped member display and neutral messages that omit host paths.
+  See [release notes](CHANGELOG.md) for behavior and limits.

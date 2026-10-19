@@ -123,6 +123,56 @@ directly; the ordinary report boundary does not silently discard a failed status
 Entrypoint-declaration comparison remains future work. Unchanged inventory does
 not establish package equivalence or safety.
 
+## Export SARIF results
+
+Produce a SARIF 2.1.0 artifact for generic viewers or CI artifact storage:
+
+```sh
+PYTHONPATH=src python3 -m npm_tarball_audit example.tgz --sarif > audit.sarif
+```
+
+`--sarif` is an audit output format, mutually exclusive with `--json` and
+unavailable with `--compare`. Ordinary expected-name/version/integrity checks
+still apply. Exit codes remain `0` for pass/warning and `1` for failed audit
+checks. Invalid arguments or an export that exceeds its validation budget return
+`2`, without a partial SARIF document.
+
+The pure API accepts an explicitly supplied audit report and reads no files:
+
+```python
+from npm_tarball_audit import audit
+from npm_tarball_audit.sarif import to_sarif
+
+sarif = to_sarif(audit("example.tgz"))
+```
+
+Rules have stable `NTA/<finding_code>` IDs, sorted by code. Results retain the
+original finding order and severity. The converter accepts v1 pass, warning or
+fail reports with explicit false execution/extraction flags; malformed inputs
+raise a generic `ValueError`. The default `max_findings=20000` is inclusive and
+must be a positive integer, excluding booleans. One archive member can produce
+several findings, so this budget is separate from the archive member limit. Pure
+callers may explicitly raise it. It is not a total input-byte budget. Results are
+fresh objects and do not modify the input report.
+
+The export intentionally uses neutral code-based messages. Original messages,
+archive paths, package metadata and other extra fields are not copied: operating
+system errors can include local paths. Retain the original report privately for
+full details; the SARIF run sets `originalReportRequired=true`.
+
+Member names are untrusted display text. Only canonical `package` paths may be
+shown, quoted and escaped to ASCII. Unsafe paths and names over the
+240-character display budget are omitted using fixed text. Unicode format
+characters remain visible escapes; characters that could form HTML, links or
+message placeholders are escaped too. This follows the message rules in the
+[OASIS SARIF specification](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html).
+
+No source snippets, physical or logical locations, artifact URIs, timestamps or
+machine-specific metadata are emitted. Package members were never extracted, so
+this is generic SARIF interchange, not a claim of workspace source annotations
+or automatic GitHub code-scanning upload compatibility. A report does not prove
+provenance or package safety. See [release notes](CHANGELOG.md).
+
 **A passing audit is not a malware verdict or a recommendation to execute the package.** Dependency vulnerabilities, publisher authenticity, runtime behavior and a complete Node resolver are outside its scope. Optional expected integrity is only as trustworthy as the source from which you obtained it. License checks are inventory checks, not a legal assessment.
 
 ## Reproduce the first case
