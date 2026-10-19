@@ -50,6 +50,39 @@ Depth limits must be positive integers, excluding booleans. The CLI uses the
 default of 64. Raising a caller's limit does not override Python's own parser
 limits; inputs rejected by that parser remain failed audits.
 
+## Compare inventory records
+
+The pure Python API compares the `inventory` lists from two reports produced
+with `include_inventory=True`. It reports added and removed files, paths whose
+byte count or SHA-256 changed, and the number of unchanged paths:
+
+```python
+from npm_tarball_audit import audit
+from npm_tarball_audit.compare import compare_inventories
+
+before = audit("example-1.0.0.tgz", include_inventory=True)
+after = audit("example-1.1.0.tgz", include_inventory=True)
+# Check each report's findings/status separately before interpreting the diff.
+changes = compare_inventories(before["inventory"], after["inventory"])
+print(changes["added"], changes["removed"], changes["changed"])
+print(changes["unchanged_count"])
+```
+
+`compare_inventories` itself reads no files and executes no package code. Each
+input must be a list of records containing exactly `path`, `bytes` and `sha256`:
+canonical relative `package/` paths, nonnegative integer sizes excluding
+booleans, and 64 ASCII hexadecimal digest characters. Duplicate or unsafe paths
+and malformed records raise `ValueError`. Digests are normalized to lowercase;
+path spelling and case are preserved. The default `max_entries=20000` applies
+independently to each list, including the boundary; larger inputs are rejected.
+The limit must be a positive integer, excluding booleans.
+
+Results are sorted by path and contain fresh records, without mutating either
+input. Each `changed` item contains `path` and complete `before`/`after` records.
+This core API compares inventory metadata only. A comparison command, report
+loading and entrypoint-declaration comparison remain future work. A file diff
+does not determine whether either package is safe or whether its audits passed.
+
 **A passing audit is not a malware verdict or a recommendation to execute the package.** Dependency vulnerabilities, publisher authenticity, runtime behavior and a complete Node resolver are outside its scope. Optional expected integrity is only as trustworthy as the source from which you obtained it. License checks are inventory checks, not a legal assessment.
 
 ## Reproduce the first case

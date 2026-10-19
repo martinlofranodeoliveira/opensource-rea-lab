@@ -2,7 +2,7 @@
 
 Each item needs a concrete user benefit, regression tests and a documented limit. Completed work is removed from this queue and described in release notes.
 
-- Add an optional comparison command for two audit inventories: report added/removed paths, changed digests and changed entrypoints, without storing vendor source.
+- Complete inventory comparison: the pure validated `compare_inventories` API now reports added/removed paths, size/digest changes and unchanged counts. A comparison command, bounded report loading and entrypoint-declaration comparison are still pending; do not store vendor source.
 - Add CI-friendly SARIF output with stable rule IDs and sanitized member paths.
 - Document and test npm `browser` remapping semantics and conditional exports coverage; avoid claiming complete Node resolution.
 - Add explicit support for scoped-package name/version validation and semver syntax checks without introducing online dependencies.
