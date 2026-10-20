@@ -113,6 +113,24 @@ existing neutral `NTA/manifest_version` rule without raw version or host paths.
 This is opt-in syntax enforcement, not range matching, version precedence,
 compatibility, package provenance or a malware verdict.
 
+## Parse package name syntax
+
+The pure `parse_package_name` API splits a supplied string into scope and name using a local ASCII syntax policy, without reading files, network access or package execution:
+
+```python
+from npm_tarball_audit.names import parse_package_name
+
+result = parse_package_name("@my-scope/my-name")
+assert result == {"scope": "my-scope", "name": "my-name"}
+
+result = parse_package_name("example")
+assert result == {"scope": None, "name": "example"}
+```
+
+The local policy accepts 1-214 ASCII characters in total, including `@` and `/` when present: lowercase letters, digits, `.`, `_` and `-`, where scope and name each start with a letter or digit. Scoped form is exactly `@scope/name` with a single slash; `scope` is returned without `@` and is `None` when absent. Ordinary `str` subclasses are accepted without coercion. No trimming, spaces, Unicode or escapes are accepted. Each call returns a newly allocated plain `dict` with exactly `scope` and `name`. Invalid inputs, types, lengths or syntax raise `ValueError("Invalid package name")` without echoing the input.
+
+This checks local syntax only. It does not validate name availability, the complete npm registry policy, safety, security, compatibility or module resolution.
+
 ## Compare inventory records
 
 The pure Python API compares the `inventory` lists from two reports produced
