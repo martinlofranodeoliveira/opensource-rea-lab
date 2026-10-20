@@ -131,6 +131,23 @@ The local policy accepts 1-214 ASCII characters in total, including `@` and `/` 
 
 This checks local syntax only. It does not validate name availability, the complete npm registry policy, safety, security, compatibility or module resolution.
 
+### Opt in to manifest name checks
+
+Audit callers and the CLI can explicitly require the local package-name syntax:
+
+```python
+from npm_tarball_audit import audit
+
+report = audit("example.tgz", strict_package_name=True)
+```
+
+```sh
+PYTHONPATH=src python3 -m npm_tarball_audit example.tgz --strict-package-name --json
+PYTHONPATH=src python3 -m npm_tarball_audit example.tgz --strict-package-name --sarif
+```
+
+The default remains `False`, preserving existing audits, including legacy names outside the local syntax. `strict_package_name` must be an actual boolean; other API values raise a fixed `ValueError` before archive access. Strict mode checks the original, untrimmed manifest name with the unchanged `parse_package_name` policy and inclusive 214-character ASCII budget: 1-214 characters total including `@` and `/`, optional exact `@scope/name` with a single slash, lowercase letters, digits, `.`, `_` and `-`, where each scope and name starts with a lowercase letter or digit. For example `example` and `@my-scope/my-name` are accepted when in budget. Invalid nonblank syntax produces the fixed `manifest_name` error finding `package.json name must follow the supported local ASCII package-name syntax` without a member field and exit code `1`; the finding is appended once after `manifest_identity` checks and before `strict_semver` checks. Missing, non-string or blank names retain only the existing `manifest_identity` finding. Expected name/version, `strict_semver`, integrity and inventory options remain literal and independent; invalid syntax may coexist with `identity_mismatch` and `manifest_version`. Plain and JSON reports retain raw package metadata as before; SARIF uses the existing neutral `NTA/manifest_name` rule without raw names or host paths. `--strict-package-name` takes no value and cannot be combined with `--compare`. This is opt-in local syntax enforcement, not complete npm registry-policy/availability validation, package equivalence, provenance, compatibility, security, legal review or a malware verdict.
+
 ## Compare inventory records
 
 The pure Python API compares the `inventory` lists from two reports produced

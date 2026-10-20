@@ -61,20 +61,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--integrity", help="Expected sha512-base64 SRI token from a trusted source")
     parser.add_argument("--include-inventory", action="store_true", help="Include each regular file path, size and SHA-256")
     parser.add_argument("--strict-semver", action="store_true", help="Require package.json version to be valid SemVer")
+    parser.add_argument("--strict-package-name", action="store_true", help="Require package.json name to follow the supported local ASCII package-name syntax")
     output_format = parser.add_mutually_exclusive_group()
     output_format.add_argument("--json", action="store_true", help="Emit a machine-readable report")
     output_format.add_argument("--sarif", action="store_true", help="Emit sanitized SARIF 2.1.0 without source locations")
     args = parser.parse_args(argv)
     if args.compare:
         if args.archive is not None or any(value is not None for value in
-                                           (args.expected_name, args.expected_version, args.integrity)) or args.include_inventory or args.sarif or args.strict_semver:
+                                           (args.expected_name, args.expected_version, args.integrity)) or args.include_inventory or args.sarif or args.strict_semver or args.strict_package_name:
             parser.error("--compare accepts only BEFORE, AFTER and optional --json; omit audit options")
         return _compare_reports(args.compare, args.json)
     if args.archive is None:
         parser.error("provide an archive to audit, or --compare BEFORE AFTER")
     report = audit(args.archive, expected_name=args.expected_name,
                    expected_version=args.expected_version, integrity=args.integrity,
-                   include_inventory=args.include_inventory, strict_semver=args.strict_semver)
+                   include_inventory=args.include_inventory, strict_semver=args.strict_semver,
+                   strict_package_name=args.strict_package_name)
     if args.sarif:
         try:
             document = to_sarif(report)

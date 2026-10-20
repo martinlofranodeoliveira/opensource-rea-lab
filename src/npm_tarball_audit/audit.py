@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
+from .names import parse_package_name
 from .semver import parse_semver
 
 
@@ -156,7 +157,7 @@ def _targets(manifest: dict) -> list[tuple[str, str, bool]]:
 def audit(path: str | Path, *, limits: Limits | None = None,
           expected_name: str | None = None, expected_version: str | None = None,
           integrity: str | None = None, include_inventory: bool = False,
-          strict_semver: bool = False) -> dict:
+          strict_semver: bool = False, strict_package_name: bool = False) -> dict:
     """Return a deterministic, JSON-serializable report without extracting files.
 
     A passing report means the implemented checks passed. It is not a malware,
@@ -164,6 +165,8 @@ def audit(path: str | Path, *, limits: Limits | None = None,
     """
     if type(strict_semver) is not bool:
         raise ValueError("strict_semver must be a boolean")
+    if type(strict_package_name) is not bool:
+        raise ValueError("strict_package_name must be a boolean")
     limits = limits or Limits()
     findings: list[dict] = []
     report: dict = {
@@ -310,6 +313,13 @@ def audit(path: str | Path, *, limits: Limits | None = None,
             for field in ("name", "version"):
                 if not isinstance(manifest.get(field), str) or not manifest[field].strip():
                     add("error", "manifest_identity", f"package.json requires a nonempty {field}")
+            if strict_package_name:
+                _raw_name = manifest.get("name")
+                if isinstance(_raw_name, str) and _raw_name.strip():
+                    try:
+                        parse_package_name(_raw_name)
+                    except ValueError:
+                        add("error", "manifest_name", "package.json name must follow the supported local ASCII package-name syntax")
             if strict_semver:
                 _raw_version = manifest.get("version")
                 if isinstance(_raw_version, str) and _raw_version.strip():
