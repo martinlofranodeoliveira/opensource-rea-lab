@@ -28,7 +28,7 @@ Add `--integrity 'sha512-BASE64_VALUE'` to check an expected SRI token obtained 
 - Compressed size, decompressed size including tar padding/metadata, member count, individual and total payload sizes, and manifest size have independent limits.
 - Rejects absolute paths, traversal, noncanonical paths, Windows-style paths, control characters, duplicate members, links, device/special members, sparse metadata and setuid/setgid bits.
 - Reads gzip through its checksum/footer, including after tar's end marker.
-- Validates `package/package.json`, duplicate JSON keys, expected name/version, and optional SHA-512 integrity. An iterative scan bounds JSON container depth before parsing or traversing entrypoints.
+- Validates `package/package.json`, duplicate JSON keys, expected name/version, and optional SHA-512 integrity. `--strict-semver` opts in to version syntax checks. An iterative scan bounds JSON container depth before parsing or traversing entrypoints.
 - Checks exact local `bin`/`exports` targets and common `main` resolution candidates. Reports wildcard exports as unverified patterns.
 - Reports license metadata/file absence and declared install/prepare hooks for review.
 
@@ -80,10 +80,38 @@ raise `ValueError("Invalid semantic version or length budget")` without copying
 the input into the error. Inputs are not trimmed or repaired: `v` prefixes,
 Unicode digits, whitespace, npm ranges and tags are rejected.
 
-This additive API checks syntax only. It does not sort versions, evaluate
-compatibility, validate npm names or establish package safety. Audit and CLI
-identity checks retain their existing behavior; they do not automatically use
-this parser. SemVer enforcement in audit reports remains future work.
+This pure API checks syntax only. It does not sort versions, evaluate
+compatibility, validate npm names or establish package safety.
+
+### Opt in to manifest version checks
+
+Audit callers and the CLI can explicitly require a SemVer version:
+
+```python
+from npm_tarball_audit import audit
+
+report = audit("example.tgz", strict_semver=True)
+```
+
+```sh
+PYTHONPATH=src python3 -m npm_tarball_audit example.tgz --strict-semver --json
+PYTHONPATH=src python3 -m npm_tarball_audit example.tgz --strict-semver --sarif
+```
+
+The default remains `False`, preserving existing audits. `strict_semver` must be
+an actual boolean; other API values raise a fixed `ValueError` before archive
+access. Strict mode checks the original, untrimmed manifest version with the
+parser's inclusive 4,096-character budget. Invalid nonblank syntax produces the
+fixed `manifest_version` error finding and exit code `1`; valid versions and
+warning-only audits keep their ordinary status and exit codes. Missing,
+non-string or blank versions retain the existing `manifest_identity` finding.
+
+Expected name/version, integrity and inventory options remain independent.
+Plain and JSON reports retain raw package metadata as before; SARIF uses the
+existing neutral `NTA/manifest_version` rule without raw version or host paths.
+`--strict-semver` takes no value and cannot be combined with `--compare`.
+This is opt-in syntax enforcement, not range matching, version precedence,
+compatibility, package provenance or a malware verdict.
 
 ## Compare inventory records
 

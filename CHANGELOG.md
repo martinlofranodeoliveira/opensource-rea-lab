@@ -1,5 +1,22 @@
 # Release notes
 
+## 2026-10-20 — Opt-in SemVer manifest auditing
+
+- Exposed `--strict-semver` for the existing `audit(..., strict_semver=True)`
+  API. Existing invocations retain their default behavior; enforcement is
+  explicit and uses the existing parser's original-text and length-budget rules.
+- Invalid nonblank version syntax adds the fixed `manifest_version` finding.
+  Plain, JSON and SARIF retain their existing output formats and exit codes;
+  SARIF uses neutral `NTA/manifest_version` results.
+- Expected identity, integrity and inventory checks remain independent.
+  `--compare` rejects the audit-only flag before reading either report.
+- Added synthetic CLI regressions and independent frozen acceptance covering
+  default-output byte compatibility, all formats, flag dispatch, argument errors,
+  grammar/budget boundaries, malformed identity and inert lifecycle declarations.
+  Original tests and security checks remain intact; no dependencies were added.
+- Syntax enforcement does not establish ordering, compatibility, valid npm names,
+  package provenance or a malware verdict.
+
 ## 2026-10-19 — Bounded semantic version syntax API
 
 - Added pure `npm_tarball_audit.semver.parse_semver` for complete SemVer 2.0.0
