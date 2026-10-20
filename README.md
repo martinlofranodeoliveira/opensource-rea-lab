@@ -324,3 +324,72 @@ Read the [case report](analyses/rea-agents-6.4.0/README.md) for exact identity, 
 See [ROADMAP.md](ROADMAP.md). Add a regression fixture with each parser fix, keep checks offline, document unsupported semantics, and make one coherent commit per tested change. An idle backlog is a reason to investigate the next useful improvement, never to fabricate commits. See [AGENTS.md](AGENTS.md) for automated contributor rules.
 
 This lab is independent of REA and npm. Upstream REA-authored code is MIT licensed; its third-party material retains its own licenses. This repository's tool was written independently and does not embed vendor implementation code.
+
+
+<!-- community-core:browser-remap-scan -->
+### Offline browser remap enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to list declared browser replacements and file shims from published package metadata without executing code, resolving modules or reading archives. It makes browser-field review reproducible and comparable across tarballs, surfaces ignored files for manual follow-up, and complements existing inventory hash comparison and main/bin/exports checks which cover file bytes and entrypoints only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/browser_remap_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, resolution or normalization. Input payload must be a dict with required key browser (None, str or dict) and optional positive-int budgets max_entries=200, max_length=4096 (bools rejected); any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid browser scan payload or budget without echoing input. Strings include str subclasses without coercion; every dict key and str value length <=max_length code points inclusive, dict keys must be str, dict values must be str or False (True rejected) else same fixed error. Iteration covers at most max_entries dict entries without mutating input; None gives kind absent, str gives kind replacement, dict gives kind remap including empty dict. Classification preserves spelling, case and order before sorting: remap entries with False value are ignored, entries with str value are remapped; replacement strings are returned verbatim. Returns a fresh dict with exactly kind, replacement, ignored, remapped, entry_count; kind is absent, replacement or remap, replacement is str or None, ignored is sorted code-point str list, remapped is sorted by from code-point list of fresh from/to dicts, entry_count is 0 for absent, 1 for replacement, len for remap. Inputs are never mutated and outputs share no references. This is syntax enumeration only, not Node resolution, browser-remap execution, provenance, safety, security, compatibility or legal review; entries are reported as declared patterns.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "browser": null
+  },
+  "output": {
+    "entry_count": 0,
+    "ignored": [],
+    "kind": "absent",
+    "remapped": [],
+    "replacement": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "browser": "./browser.js"
+  },
+  "output": {
+    "entry_count": 1,
+    "ignored": [],
+    "kind": "replacement",
+    "remapped": [],
+    "replacement": "./browser.js"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "browser": {
+      "./server.js": false,
+      "fs": "./shim.js"
+    }
+  },
+  "output": {
+    "entry_count": 2,
+    "ignored": [
+      "./server.js"
+    ],
+    "kind": "remap",
+    "remapped": [
+      {
+        "from": "fs",
+        "to": "./shim.js"
+      }
+    ],
+    "replacement": null
+  }
+}
+```
+
+Public regression tests: `tests/test_community_browser_remap_scan.py`.
