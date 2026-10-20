@@ -201,8 +201,34 @@ are positive integers, excluding booleans. The function reads no files and
 returns fresh, sorted inventory records validated by the comparator. Callers
 deliberately comparing partial inventories can still use `compare_inventories`
 directly; the ordinary report boundary does not silently discard a failed status.
-Entrypoint-declaration comparison remains future work. Unchanged inventory does
+Unchanged inventory does
 not establish package equivalence or safety.
+
+## Compare entrypoint declarations
+
+The pure `npm_tarball_audit.entrypoints.compare_entrypoints(before, after)` API compares declared `main`/`bin`/`exports` metadata supplied explicitly by the caller. It reads no files, archives, network, or audit reports and never executes, resolves, or normalizes targets:
+
+```python
+from npm_tarball_audit.entrypoints import compare_entrypoints
+
+before = {"main": "index.js", "bin": {"tool": "cli.js"}, "exports": {".": "./index.js"}}
+after = {"main": "index.js", "bin": {"tool": "cli.js"}, "exports": {".": "./esm.js"}}
+result = compare_entrypoints(before, after)
+assert result == {
+    "added": [],
+    "removed": [],
+    "changed": [{"field": "exports", "before": {".": "./index.js"}, "after": {".": "./esm.js"}}],
+    "unchanged_count": 2,
+}
+```
+
+Only the literal fields `main`, `bin`, and `exports` participate; other metadata is ignored and never copied. Absence differs from explicit `None`. Both arguments may be positional or named and no other options exist. Results use exactly `added`, `removed`, `changed`, and `unchanged_count`, with arrays ordered by field `main`, `bin`, `exports`. `added`/`removed` items contain exactly `field` and `value`; `changed` items contain exactly `field`, `before`, and `after`. `unchanged_count` counts selected fields present on both sides with equal declarations. Every output container is newly allocated and shares no mutable container with inputs or other occurrences.
+
+Input limits (inclusive, checked before any comparison): each side is an exact built-in `dict` with at most 128 fields; every top-level key is an exact `str` of at most 1024 code points with no surrogates. Selected `main`/`bin`/`exports` values are bounded JSON-compatible trees using exact `dict`, `list`, `str`, `int`, `float`, `bool`, or `None`; dict keys are exact `str`. Integers must be within `-(2**53-1)..2**53-1`; floats must be finite. Every nested string and dict key is at most 1024 code points with no surrogates; control characters and non-ASCII text are retained as metadata. Per side, selected values together contain at most 4096 value nodes (each container and primitive counts one; dict keys do not count), selected containers have maximum depth 16 with a selected root container at depth 1, and the sum of string-value and nested-key lengths is at most 16384 code points (top-level field names excluded). Cycles, subclasses, unsupported types, non-finite numbers, or budget excess raise `ValueError("Invalid entrypoint metadata")` without echoing input.
+
+Order and equality semantics: `main`/`bin` dicts are compared ignoring key order recursively and are output with lexicographically sorted keys (ordinary Python Unicode order); every object under `exports` is order-sensitive and output preserves its original insertion order. Lists are order-sensitive for all fields. Scalar types are significant, including `bool` versus `int` and `int` versus `float`; equal finite floats compare by numeric equality so `0.0` and `-0.0` are unchanged. No trimming, path normalization, wildcard expansion, browser remapping, or package-name inference is performed.
+
+This is declarative metadata comparison only. It does not read or execute packages, resolve targets, check target existence, or conclude compatibility, provenance, security, or safety. It adds no CLI flags and changes no audit-report schema.
 
 ## Export SARIF results
 
