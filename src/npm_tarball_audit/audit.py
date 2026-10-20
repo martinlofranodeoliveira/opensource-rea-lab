@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
+from .semver import parse_semver
+
 
 @dataclass(frozen=True)
 class Limits:
@@ -153,12 +155,15 @@ def _targets(manifest: dict) -> list[tuple[str, str, bool]]:
 
 def audit(path: str | Path, *, limits: Limits | None = None,
           expected_name: str | None = None, expected_version: str | None = None,
-          integrity: str | None = None, include_inventory: bool = False) -> dict:
+          integrity: str | None = None, include_inventory: bool = False,
+          strict_semver: bool = False) -> dict:
     """Return a deterministic, JSON-serializable report without extracting files.
 
     A passing report means the implemented checks passed. It is not a malware,
     dependency-vulnerability, publisher-identity or runtime-behavior verdict.
     """
+    if type(strict_semver) is not bool:
+        raise ValueError("strict_semver must be a boolean")
     limits = limits or Limits()
     findings: list[dict] = []
     report: dict = {
@@ -305,6 +310,13 @@ def audit(path: str | Path, *, limits: Limits | None = None,
             for field in ("name", "version"):
                 if not isinstance(manifest.get(field), str) or not manifest[field].strip():
                     add("error", "manifest_identity", f"package.json requires a nonempty {field}")
+            if strict_semver:
+                _raw_version = manifest.get("version")
+                if isinstance(_raw_version, str) and _raw_version.strip():
+                    try:
+                        parse_semver(_raw_version)
+                    except ValueError:
+                        add("error", "manifest_version", "package.json version must be valid SemVer within the supported length budget")
             for field, expected in (("name", expected_name), ("version", expected_version)):
                 if expected is not None and manifest.get(field) != expected:
                     add("error", "identity_mismatch", f"Package {field} does not match the expected value")
