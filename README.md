@@ -50,6 +50,41 @@ Depth limits must be positive integers, excluding booleans. The CLI uses the
 default of 64. Raising a caller's limit does not override Python's own parser
 limits; inputs rejected by that parser remain failed audits.
 
+## Parse semantic version syntax
+
+The pure `parse_semver` API validates a supplied string using the syntax of
+[SemVer 2.0.0](https://semver.org/spec/v2.0.0.html), without reading a manifest or
+executing package code:
+
+```python
+from npm_tarball_audit.semver import parse_semver
+
+version = parse_semver("2.4.1-rc.3+Build.007")
+assert version == {
+    "major": "2", "minor": "4", "patch": "1",
+    "prerelease": ["rc", "3"], "build": ["Build", "007"],
+}
+```
+
+Core numbers and identifiers remain strings, including very large numbers.
+Core numbers and numeric prerelease identifiers cannot have leading zeroes;
+build identifiers can. ASCII letters and hyphens are allowed in extension
+identifiers. Spelling, case and order are preserved, and every result has fresh
+mutable containers. Ordinary `str` subclasses are accepted without coercion.
+
+The keyword-only `max_length=4096` budget counts Python code points and is
+inclusive. It must be a positive integer, excluding booleans; callers can raise
+it explicitly. The length check precedes parsing. This is an API resource
+budget, not a limit imposed by SemVer. Invalid inputs, types, syntax or budgets
+raise `ValueError("Invalid semantic version or length budget")` without copying
+the input into the error. Inputs are not trimmed or repaired: `v` prefixes,
+Unicode digits, whitespace, npm ranges and tags are rejected.
+
+This additive API checks syntax only. It does not sort versions, evaluate
+compatibility, validate npm names or establish package safety. Audit and CLI
+identity checks retain their existing behavior; they do not automatically use
+this parser. SemVer enforcement in audit reports remains future work.
+
 ## Compare inventory records
 
 The pure Python API compares the `inventory` lists from two reports produced
