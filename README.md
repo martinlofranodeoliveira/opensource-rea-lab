@@ -393,3 +393,56 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_browser_remap_scan.py`.
+
+
+<!-- community-core:license-identifier-scan -->
+### Offline license identifier syntax checker for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to validate published package.json license strings before manual follow-up, making license-metadata review reproducible and comparable across tarballs without executing code, resolving modules, reading archives or using network. It surfaces malformed characters, lengths and shapes for manual SPDX and legal review and complements existing inventory hash comparison, name and semver syntax checks and main/bin/exports checks which cover file bytes, identity and entrypoints only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/license_identifier_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, resolution or normalization. Input payload must be a dict with required key license (None or str) and optional max_length=64 (positive int excluding bool); any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid license scan payload or budget without echoing input. Str includes subclasses without coercion; code-point length must be within 1..max_length inclusive with length checked before parsing, else returns valid false for empty or over-length strings and same fixed error for budget misuse with no trimming or repair. None means absent; str must match local token syntax: ASCII letters and digits with interior '.'/'-'/' +' only, starting with letter or digit, no leading or trailing dot, hyphen or plus, no spaces, slashes, colons, Unicode, or expanded phrases; e.g. MIT, ISC and Apache-2.0 are valid when in budget. Returns fresh dict with exactly valid bool, kind absent/string, identifier None/verbatim string; absent gives valid false kind absent identifier None; valid syntax gives valid true kind string identifier verbatim input; any other string gives valid false kind string identifier None. Inputs never mutated and outputs share no references with fresh containers each call. Uses only math/re/json/unicodedata with plain functions and immutable literal constants and local mutables. Syntax check only, not SPDX validation, registry lookup, provenance, safety, security, compatibility or legal review.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "license": "MIT"
+  },
+  "output": {
+    "identifier": "MIT",
+    "kind": "string",
+    "valid": true
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "license": "Apache-2.0"
+  },
+  "output": {
+    "identifier": "Apache-2.0",
+    "kind": "string",
+    "valid": true
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "license": null
+  },
+  "output": {
+    "identifier": null,
+    "kind": "absent",
+    "valid": false
+  }
+}
+```
+
+Public regression tests: `tests/test_community_license_identifier_scan.py`.
