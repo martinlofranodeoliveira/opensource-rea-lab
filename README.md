@@ -1372,3 +1372,59 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_sideeffects_declaration_scan.py`.
+
+
+<!-- community-core:types-declaration-scan -->
+### Offline types declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface declared TypeScript declaration entry strings from published package.json metadata without executing code, installing packages, reading archives or using network. It makes exact verbatim types and typings strings reproducible and comparable across tarballs, surfaces present versus absent for manual follow-up against inventory hashes and main bin exports checks, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, bugs, dependency, description, engines, files, funding, homepage, integrity, keywords, license, platform, repository, scripts, sideEffects and type syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/types_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, resolution or hook execution. Input payload must be a dict with required keys types and typings and optional positive-int budget max_length=512 (bools rejected); any non-dict payload, missing key, extra key, wrong budget type or non-positive budget raises ValueError with fixed text Invalid types scan payload or budget without echoing input. types and typings must each be None or str including str subclasses without coercion; None denotes absent, str denotes present declaration; integers including 0 and 1, bools, lists, dicts or other types raise the same fixed error. No trimming, coercion, fetching, validation, normalization or repair is performed. Each present string must have code-point length 1 to max_length inclusive with spelling, case and whitespace preserved verbatim else the same fixed error. Returns a fresh dict with exactly keys types, typings and declared; types is the verbatim string content or None when absent, typings is the verbatim string content or None when absent, declared is True when either string is present else False when both are None. Both None yields types None with typings None and declared False. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults. This covers plural types and typings declaration strings only, not singular type module flag, and is declaration enumeration only, not execution, installation, resolution, existence check, fetching, provenance verification, safety, security, compatibility or legal review; values are reported as declared.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "types": "./dist/index.d.ts",
+    "typings": null
+  },
+  "output": {
+    "declared": true,
+    "types": "./dist/index.d.ts",
+    "typings": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "types": null,
+    "typings": null
+  },
+  "output": {
+    "declared": false,
+    "types": null,
+    "typings": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "types": null,
+    "typings": "./lib/main.d.ts"
+  },
+  "output": {
+    "declared": true,
+    "types": null,
+    "typings": "./lib/main.d.ts"
+  }
+}
+```
+
+Public regression tests: `tests/test_community_types_declaration_scan.py`.
