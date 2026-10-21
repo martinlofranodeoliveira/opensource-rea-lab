@@ -1118,3 +1118,75 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_homepage_declaration_scan.py`.
+
+
+<!-- community-core:funding-declaration-scan -->
+### Offline funding declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to list declared funding support pointers from published package.json metadata without executing code, installing packages, reading archives or using network. It makes sponsorship-contact intent reproducible and comparable across tarballs, surfaces exact type and url strings for manual follow-up against inventory hashes, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, bugs, dependency, description, engines, files, homepage, integrity, keywords, license, platform, repository, scripts and type syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/funding_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation or hook execution. Input payload must be a dict with required key funding and optional positive-int budgets max_entries=16 and max_length=512 (bools rejected); any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid funding scan payload or budget without echoing input. funding must be None or str or dict or list; None denotes absent. Str values include str subclasses without coercion and denote shorthand url with type absent. Dict values denote single entry with 1 to 2 keys drawn only from type and url with at least one present. List values denote array with 1..max_entries entries each str or dict as above; empty list denotes absent. Every examined string must have code-point length 1..max_length inclusive with no trimming, case change, normalization, fetching, validation or repair, else same fixed error. List size exceeding max_entries raises same fixed error. Returns fresh dict with exactly entries and count; entries is list of fresh dicts each with exactly type and url where absent maps to None and present maps to fresh verbatim string preserving spelling, case and whitespace, in input order for single or array form with shorthand str mapping to type None, count is len of entries list, None or empty list gives empty list and zero. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults. This is declaration enumeration only, not execution, installation, resolution, fetching, ranking, provenance, safety, security, compatibility or legal review; entries are reported as declared strings.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "funding": null
+  },
+  "output": {
+    "count": 0,
+    "entries": []
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "funding": "https://example.com/sponsor"
+  },
+  "output": {
+    "count": 1,
+    "entries": [
+      {
+        "type": null,
+        "url": "https://example.com/sponsor"
+      }
+    ]
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "funding": [
+      {
+        "type": "github",
+        "url": "https://example.com/fund"
+      },
+      {
+        "url": "https://example.com/other"
+      }
+    ]
+  },
+  "output": {
+    "count": 2,
+    "entries": [
+      {
+        "type": "github",
+        "url": "https://example.com/fund"
+      },
+      {
+        "type": null,
+        "url": "https://example.com/other"
+      }
+    ]
+  }
+}
+```
+
+Public regression tests: `tests/test_community_funding_declaration_scan.py`.
