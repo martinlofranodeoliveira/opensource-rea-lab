@@ -630,3 +630,61 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_files_allowlist_scan.py`.
+
+
+<!-- community-core:platform-declaration-scan -->
+### Offline os/cpu declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to list declared os and cpu constraints from published package.json metadata without executing code, installing packages, reading archives, resolving platforms or using network. It makes platform intent reproducible and comparable across tarballs, surfaces exact allow and negate tokens for manual follow-up against inventory hashes, and complements existing inventory hash comparison, name and semver syntax checks, main/bin/exports checks, and license, integrity, browser, dependency and files syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/platform_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, platform resolution or installation. Input payload must be a dict with required keys os and cpu and optional positive-int budgets max_entries=32 and max_length=64 (bools rejected); any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid platform scan payload or budget without echoing input. os and cpu must each be None or list; None denotes absent. Strings include str subclasses without coercion; every list element must be str with code-point length 1..max_length inclusive, else same fixed error, with no trimming, case change, negation evaluation, platform resolution or repair. If either list size exceeds max_entries same fixed error. Returns fresh dict with exactly os, cpu and count; os and cpu are code-point sorted lists of fresh verbatim strings preserving spelling, case and duplicates including leading-bang tokens, None gives empty list, count is len os plus len cpu. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math/re/json/unicodedata with plain functions and immutable literal module constants with local mutable containers. This is declaration enumeration only, not execution, resolution, installation, compatibility assessment, provenance, safety, security or legal review; entries are reported as declared strings.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "cpu": [
+      "x64"
+    ],
+    "os": [
+      "linux",
+      "darwin"
+    ]
+  },
+  "output": {
+    "count": 3,
+    "cpu": [
+      "x64"
+    ],
+    "os": [
+      "darwin",
+      "linux"
+    ]
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "cpu": [
+      "arm64",
+      "!x32"
+    ],
+    "os": null
+  },
+  "output": {
+    "count": 2,
+    "cpu": [
+      "!x32",
+      "arm64"
+    ],
+    "os": []
+  }
+}
+```
+
+Public regression tests: `tests/test_community_platform_declaration_scan.py`.
