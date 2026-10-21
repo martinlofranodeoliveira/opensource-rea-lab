@@ -965,3 +965,54 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_engines_declaration_scan.py`.
+
+
+<!-- community-core:type-declaration-scan -->
+### Offline package type declaration checker for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface the declared package type from published package.json metadata without executing code, installing packages, reading archives or using network. It makes module-system intent reproducible and comparable across tarballs, surfaces exact commonjs or module strings for manual follow-up against inventory hashes and entrypoint targets, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, dependency, engines, files, integrity, license, platform, repository and scripts syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/type_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation or resolution. Input payload must be a dict with required key type and optional positive-int budget max_length=32 with bools rejected; any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid type scan payload or budget without echoing input. type must be None or str; None denotes absent. Str values include str subclasses without coercion; every examined string must have code-point length 1 to max_length inclusive with no trimming, case change, normalization or repair and must equal exactly commonjs or module case-sensitively, else same fixed error. Returns fresh dict with exactly type and declared; type is None when absent else fresh verbatim string, declared is True when present else False. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers. This is declaration enumeration only, not execution, installation, resolution, provenance, safety, security, compatibility or legal review; entries are reported as declared strings.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "type": "module"
+  },
+  "output": {
+    "declared": true,
+    "type": "module"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "type": null
+  },
+  "output": {
+    "declared": false,
+    "type": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "max_length": 32,
+    "type": "commonjs"
+  },
+  "output": {
+    "declared": true,
+    "type": "commonjs"
+  }
+}
+```
+
+Public regression tests: `tests/test_community_type_declaration_scan.py`.
