@@ -1067,3 +1067,54 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_description_declaration_scan.py`.
+
+
+<!-- community-core:homepage-declaration-scan -->
+### Offline homepage declaration checker for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface the declared homepage string from published package.json metadata without executing code, installing packages, reading archives or using network. It makes project-link intent reproducible and comparable across tarballs, surfaces exact homepage text for manual follow-up against inventory hashes and repository/description declarations, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, dependency, engines, files, integrity, license, platform, repository, scripts and type syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/homepage_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation or resolution. Input payload must be a dict with required key homepage and optional positive-int budget max_length=512 with bools rejected; any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid homepage scan payload or budget without echoing input. homepage must be None or str; None denotes absent. Str values include str subclasses without coercion; every examined string must have code-point length 1 to max_length inclusive with no trimming, case change, normalization, fetching, validation or repair, else same fixed error. Returns fresh dict with exactly homepage and declared; homepage is None when absent else fresh verbatim string preserving spelling, case and whitespace, declared is True when present else False. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers. This is declaration enumeration only, not execution, installation, resolution, fetching, ranking, provenance, safety, security, compatibility or legal review; entries are reported as declared strings.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "homepage": "https://example.com/project"
+  },
+  "output": {
+    "declared": true,
+    "homepage": "https://example.com/project"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "homepage": null
+  },
+  "output": {
+    "declared": false,
+    "homepage": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "homepage": "https://example.com/docs",
+    "max_length": 512
+  },
+  "output": {
+    "declared": true,
+    "homepage": "https://example.com/docs"
+  }
+}
+```
+
+Public regression tests: `tests/test_community_homepage_declaration_scan.py`.
