@@ -1016,3 +1016,54 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_type_declaration_scan.py`.
+
+
+<!-- community-core:description-declaration-scan -->
+### Offline description declaration checker for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface the declared package description from published package.json metadata without executing code, installing packages, reading archives or using network. It makes short intent statements reproducible and comparable across tarballs, surfaces exact description text for manual follow-up against inventory hashes, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, dependency, engines, files, integrity, license, platform, repository, scripts and type syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/description_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation or resolution. Input payload must be a dict with required key description and optional positive-int budget max_length=512 (bools rejected); any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid description scan payload or budget without echoing input. description must be None or str; None denotes absent. Str values include str subclasses without coercion; every examined string must have code-point length 1..max_length inclusive with no trimming, case change, normalization, validation or repair, else same fixed error. Returns fresh dict with exactly description and declared; description is None when absent else fresh verbatim string preserving spelling, case and whitespace, declared is True when present else False. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers. This is declaration enumeration only, not execution, installation, resolution, provenance, safety, security, compatibility or legal review; entries are reported as declared strings.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "description": "Small audit helper"
+  },
+  "output": {
+    "declared": true,
+    "description": "Small audit helper"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "description": null
+  },
+  "output": {
+    "declared": false,
+    "description": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "description": "Hi",
+    "max_length": 4
+  },
+  "output": {
+    "declared": true,
+    "description": "Hi"
+  }
+}
+```
+
+Public regression tests: `tests/test_community_description_declaration_scan.py`.
