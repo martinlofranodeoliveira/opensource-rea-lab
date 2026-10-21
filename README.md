@@ -901,3 +901,67 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_author_contributors_scan.py`.
+
+
+<!-- community-core:engines-declaration-scan -->
+### Offline engines declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to list declared runtime engines from published package.json metadata without executing code, installing packages, reading archives or using network. It makes engine intent reproducible and comparable across tarballs, surfaces exact engine names and range strings for manual follow-up against inventory hashes, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, dependency, files, integrity, license, platform, repository and scripts syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/engines_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation or resolution. Input payload must be a dict with required key engines and optional positive-int budgets max_entries=16 and max_length=256 with bools rejected; any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid engines scan payload or budget without echoing input. engines must be None or dict; None or empty dict denotes absent. Keys and values include str subclasses without coercion; every name and range must be str with code-point length 1 to max_length inclusive with no trimming, case change, normalization, range evaluation or repair, else same fixed error. If dict size exceeds max_entries same fixed error. Returns fresh dict with exactly engines and count; engines is code-point sorted list by name then range of fresh dicts with exactly name and range preserving verbatim spelling, case and whitespace, None or empty dict gives empty list, count is len of engines list. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers. This is declaration enumeration only, not execution, installation, resolution, range satisfaction, provenance, safety, security, compatibility or legal review; entries are reported as declared strings.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "engines": {
+      "node": ">=18",
+      "npm": ">=9"
+    }
+  },
+  "output": {
+    "count": 2,
+    "engines": [
+      {
+        "name": "node",
+        "range": ">=18"
+      },
+      {
+        "name": "npm",
+        "range": ">=9"
+      }
+    ]
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "engines": null
+  },
+  "output": {
+    "count": 0,
+    "engines": []
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "engines": {},
+    "max_entries": 16,
+    "max_length": 256
+  },
+  "output": {
+    "count": 0,
+    "engines": []
+  }
+}
+```
+
+Public regression tests: `tests/test_community_engines_declaration_scan.py`.
