@@ -446,3 +446,56 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_license_identifier_scan.py`.
+
+
+<!-- community-core:integrity-token-scan -->
+### Offline SRI token syntax checker for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to validate expected sha512 SRI tokens obtained from a trusted source before running tarball audits, making integrity review reproducible and comparable across published artifacts without executing code, reading archives, resolving modules or using network. It surfaces malformed prefixes, alphabets, lengths and budgets for manual follow-up and complements existing inventory hash comparison, name and semver syntax checks and main bin exports checks which cover file bytes, identity and entrypoints only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/integrity_token_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, resolution or normalization. Input payload must be a dict with required key integrity set to None or str and optional positive-int budget max_length with default 128 where bools are rejected; any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid integrity scan payload or budget without echoing input. Strings include str subclasses without coercion; code-point length is checked before parsing and must be within 1 to max_length inclusive, else empty or over-length strings return valid false without error, with no trimming or repair. None denotes absent. A string is valid only when it equals prefix sha512- followed by exactly 88 base64 characters where the first 86 are ASCII letters digits plus and slash and the final two are equals equals, for a total of 95 characters; other algorithms, spaces, missing prefix or padding, wrong length, wrong alphabet or Unicode are invalid. Returns a fresh dict with exactly valid, kind, token; absent gives valid false kind absent token None; valid syntax gives valid true kind string token verbatim input; any other string gives valid false kind string token None. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math re json unicodedata with plain functions and immutable literal constants and local mutable containers. This is syntax check only, not digest verification, registry lookup, provenance, safety, security, compatibility or legal review; tokens are reported as declared strings.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "integrity": "sha512-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/ABCDEFGHIJKLMNOPQRSTUV=="
+  },
+  "output": {
+    "kind": "string",
+    "token": "sha512-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/ABCDEFGHIJKLMNOPQRSTUV==",
+    "valid": true
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "integrity": "sha384-abc"
+  },
+  "output": {
+    "kind": "string",
+    "token": null,
+    "valid": false
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "integrity": null
+  },
+  "output": {
+    "kind": "absent",
+    "token": null,
+    "valid": false
+  }
+}
+```
+
+Public regression tests: `tests/test_community_integrity_token_scan.py`.
