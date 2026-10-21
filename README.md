@@ -820,3 +820,84 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_scripts_declaration_scan.py`.
+
+
+<!-- community-core:author-contributors-scan -->
+### Offline author and contributors declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to list declared author and contributors persons from published package.json metadata without executing code, installing packages, reading archives, contacting addresses or using network. It makes authorship intent reproducible and comparable across tarballs, surfaces exact name, email and url strings for manual follow-up against inventory hashes, and complements existing inventory hash comparison, name and semver syntax checks, main/bin/exports checks, and license, integrity, browser, dependency, files, platform, repository and scripts syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/author_contributors_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation or hook execution. Input payload must be a dict with required keys author and contributors and optional positive-int budgets max_entries=32 and max_length=512 (bools rejected); any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid author scan payload or budget without echoing input. author must be None or str or dict; None denotes absent. contributors must be None or list; None or empty list denotes absent. Strings include str subclasses without coercion; every examined string must have code-point length 1..max_length inclusive with no trimming, case change, normalization, fetching, validation or repair, else same fixed error. A str person denotes a verbatim name with absent email and url. A dict person must contain required name str in budget and may contain optional email str in budget and optional url str in budget with no other keys; missing name, extra key or bad value raises same fixed error. A contributors list must contain only str or dict items under the same per-item rules with no nesting beyond one level; if list size exceeds max_entries same fixed error. Returns fresh dict with exactly persons and count; persons is list of fresh dicts with exactly name, email, url and source preserving verbatim spelling, case and whitespace with absent email or url as None and source as author or contributors, code-point sorted by source then name then email then url with None as empty string, None or empty inputs give empty list, count is len of persons list. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math/re/json/unicodedata with plain functions and immutable literal module constants with local mutable containers. This is declaration enumeration only, not execution, installation, resolution, fetching, contact, provenance, safety, security, compatibility or legal review; entries are reported as declared strings.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "author": "Jane Doe",
+    "contributors": null
+  },
+  "output": {
+    "count": 1,
+    "persons": [
+      {
+        "email": null,
+        "name": "Jane Doe",
+        "source": "author",
+        "url": null
+      }
+    ]
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "author": {
+      "email": "jane@example.com",
+      "name": "Jane Doe"
+    },
+    "contributors": [
+      {
+        "name": "John Smith",
+        "url": "https://example.com/john"
+      }
+    ]
+  },
+  "output": {
+    "count": 2,
+    "persons": [
+      {
+        "email": "jane@example.com",
+        "name": "Jane Doe",
+        "source": "author",
+        "url": null
+      },
+      {
+        "email": null,
+        "name": "John Smith",
+        "source": "contributors",
+        "url": "https://example.com/john"
+      }
+    ]
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "author": null,
+    "contributors": []
+  },
+  "output": {
+    "count": 0,
+    "persons": []
+  }
+}
+```
+
+Public regression tests: `tests/test_community_author_contributors_scan.py`.
