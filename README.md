@@ -1313,3 +1313,62 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_bugs_declaration_scan.py`.
+
+
+<!-- community-core:sideeffects-declaration-scan -->
+### Offline sideEffects declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface declared sideEffects intent from published package.json metadata without executing code, installing packages, reading archives or using network. It makes bundler-relevant flags and path patterns reproducible and comparable across tarballs, surfaces exact verbatim booleans and patterns for manual follow-up against inventory hashes and entrypoint checks, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, bugs, dependency, description, engines, files, funding, homepage, integrity, keywords, license, platform, repository, scripts and type syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/sideeffects_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation or resolution. Input payload must be a dict with required key sideEffects and optional positive-int budgets max_entries=32 and max_length=512 (bools rejected); any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid sideEffects scan payload or budget without echoing input. sideEffects must be None or exact bool where type(value) is bool or str or list; None denotes absent, bool denotes flag, str denotes single pattern, list denotes pattern list; integers including 0 and 1, dicts or other types raise same fixed error. Str form must be str including str subclasses without coercion with code-point length 1 to max_length inclusive with no trimming, case change, normalization, fetching, validation or repair else same fixed error. List form must contain 0 to max_entries items; each item must be str including str subclasses without coercion with code-point length 1 to max_length inclusive with same verbatim handling else same fixed error. Exact bools need no length check. Returns fresh dict with exactly flag, entries and declared; flag is input bool or None, entries is None for None/bool else fresh list of fresh verbatim strings preserving order spelling case and whitespace with single string input mapped to single-element list, declared is True when bool/str/list present else False when None. Empty list yields entries [] with declared True and flag None. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults. This is declaration enumeration only, not execution, installation, resolution, fetching, existence check, glob matching, provenance, safety, security, compatibility or legal review; values are reported as declared.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "sideEffects": null
+  },
+  "output": {
+    "declared": false,
+    "entries": null,
+    "flag": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "sideEffects": false
+  },
+  "output": {
+    "declared": true,
+    "entries": null,
+    "flag": false
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "sideEffects": [
+      "./src/*.js",
+      "./styles.css"
+    ]
+  },
+  "output": {
+    "declared": true,
+    "entries": [
+      "./src/*.js",
+      "./styles.css"
+    ],
+    "flag": null
+  }
+}
+```
+
+Public regression tests: `tests/test_community_sideeffects_declaration_scan.py`.
