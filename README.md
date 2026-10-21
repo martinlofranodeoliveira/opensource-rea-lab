@@ -499,3 +499,72 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_integrity_token_scan.py`.
+
+
+<!-- community-core:dependency-declaration-scan -->
+### Offline dependency declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to list declared runtime dependencies from published package.json metadata without executing code, installing packages, reading archives, resolving modules or using network. It makes dependency review reproducible and comparable across tarballs, surfaces declared names and specifiers for manual follow-up, and complements existing inventory hash comparison, name and semver syntax checks, main/bin/exports checks, license and integrity syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/dependency_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, resolution or normalization. Input payload must be a dict with required key dependencies and optional positive-int budgets max_entries=128 and max_length=1024 (bools rejected); any missing key, extra key, wrong type or non-positive budget raises ValueError with fixed text Invalid dependency scan payload or budget without echoing input. dependencies must be None or dict; None denotes absent. Strings include str subclasses without coercion; every dict key and every dict value must be str with code-point length 1..max_length inclusive, else same fixed error, with no trimming, normalization, name validation, range evaluation or repair. If dict size exceeds max_entries same fixed error. Returns fresh dict with exactly dependencies and count; dependencies is code-point sorted by name list of fresh name/spec dicts preserving verbatim spelling, case and specifier text, count is len. None gives empty list and zero count. Inputs never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math/re/json/unicodedata with plain functions and immutable literal constants and local mutable containers. Declaration enumeration only, not resolution, installation, provenance, safety, security, compatibility or legal review; entries reported as declared strings.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "dependencies": {
+      "lodash": "^4.17.21",
+      "react": "18.2.0"
+    }
+  },
+  "output": {
+    "count": 2,
+    "dependencies": [
+      {
+        "name": "lodash",
+        "spec": "^4.17.21"
+      },
+      {
+        "name": "react",
+        "spec": "18.2.0"
+      }
+    ]
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "dependencies": null
+  },
+  "output": {
+    "count": 0,
+    "dependencies": []
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "dependencies": {
+      "left-pad": "1.3.0"
+    }
+  },
+  "output": {
+    "count": 1,
+    "dependencies": [
+      {
+        "name": "left-pad",
+        "spec": "1.3.0"
+      }
+    ]
+  }
+}
+```
+
+Public regression tests: `tests/test_community_dependency_declaration_scan.py`.
