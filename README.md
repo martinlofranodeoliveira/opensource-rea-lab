@@ -1610,3 +1610,54 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_directories_declaration_scan.py`.
+
+
+<!-- community-core:packagemanager-declaration-scan -->
+### Offline packageManager declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface declared packageManager intent from published package.json metadata without executing code, installing packages, reading archives or using network. It makes exact verbatim manager strings reproducible and comparable across tarballs, surfaces present versus absent for manual follow-up against inventory hashes and entrypoint checks, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, bugs, dependency, description, directories, engines, files, funding, homepage, integrity, keywords, license, man, platform, publishConfig, repository, scripts, sideEffects, type and types syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/packagemanager_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation or resolution. Input payload must be a dict with required key packageManager and optional positive-int budget max_length=256 (bools rejected, allowed 1 to 4096 inclusive); any non-dict payload, missing key, extra key, wrong budget type or out-of-range budget raises ValueError with fixed text Invalid packageManager scan payload or budget without echoing input. packageManager must be None for absent or str including str subclasses without coercion for present; integers including 0 and 1, bools, lists, dicts or other types raise the same fixed error with no coercion, trimming, fetching, normalization or repair. Str form must have code-point length 1 to max_length inclusive preserved verbatim with no trimming, case change, normalization, fetching, validation or repair and without C0 control characters except LF CR TAB and without unpaired surrogates; out-of-budget lengths or disallowed characters raise the same fixed error. Returns a fresh dict with exactly declared and value; value is None when packageManager is None else verbatim string content; declared is True when str present else False when None. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults. This is declaration enumeration only, not execution, installation, resolution, fetching, provenance verification, safety, security, compatibility or legal review; values are reported as declared.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "packageManager": "npm@10.8.2"
+  },
+  "output": {
+    "declared": true,
+    "value": "npm@10.8.2"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "packageManager": null
+  },
+  "output": {
+    "declared": false,
+    "value": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "max_length": 256,
+    "packageManager": "pnpm@9.1.0"
+  },
+  "output": {
+    "declared": true,
+    "value": "pnpm@9.1.0"
+  }
+}
+```
+
+Public regression tests: `tests/test_community_packagemanager_declaration_scan.py`.
