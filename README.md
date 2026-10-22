@@ -1548,3 +1548,65 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_man_declaration_scan.py`.
+
+
+<!-- community-core:directories-declaration-scan -->
+### Offline directories declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface declared directories layout intent from published package.json metadata without executing code, installing packages, reading archives or using network. It makes exact verbatim lib, bin, man, doc, example and test targets reproducible and comparable across tarballs, surfaces present versus absent for manual follow-up against inventory hashes and entrypoint checks, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, bugs, dependency, description, engines, files, funding, homepage, integrity, keywords, license, man, platform, publishConfig, repository, scripts, sideEffects, type and types syntax checks which cover file bytes, identity, entrypoints and token shapes only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/directories_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, resolution or hook execution. Input payload must be a dict with required key directories and optional positive-int budgets max_entries=8 and max_length=512 (bools rejected); any non-dict payload, missing key, extra key, wrong budget type or non-positive budget raises ValueError with fixed text Invalid directories scan payload or budget without echoing input. directories must be None or dict; None denotes absent, dict denotes present layout map; strings, integers including 0 and 1, bools, lists or other types raise the same fixed error with no coercion, trimming, fetching, normalization or repair. Dict form must contain 0 to max_entries entries inclusive; each key must be str including str subclasses without coercion exactly one of lib, bin, man, doc, example or test preserved verbatim case-sensitively; each value must be str including str subclasses without coercion with code-point length 1 to max_length inclusive preserved verbatim with no trimming, case change, normalization, fetching, validation, existence check or repair; unknown keys, non-string keys or values, empty values or out-of-budget counts or lengths raise the same fixed error. Returns a fresh dict with exactly entries and declared; entries is None when directories is None else a fresh sorted list of fresh dicts each with exactly key and value; dict input maps to entries sorted ascending by key code points with verbatim key and value; empty dict yields entries [] with declared True; declared is True when dict present else False when None. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults. This is declaration enumeration only, not execution, installation, resolution, fetching, existence check, glob matching, provenance verification, safety, security, compatibility or legal review; values are reported as declared.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "directories": null
+  },
+  "output": {
+    "declared": false,
+    "entries": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "directories": {}
+  },
+  "output": {
+    "declared": true,
+    "entries": []
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "directories": {
+      "doc": "docs",
+      "lib": "lib"
+    }
+  },
+  "output": {
+    "declared": true,
+    "entries": [
+      {
+        "key": "doc",
+        "value": "docs"
+      },
+      {
+        "key": "lib",
+        "value": "lib"
+      }
+    ]
+  }
+}
+```
+
+Public regression tests: `tests/test_community_directories_declaration_scan.py`.
