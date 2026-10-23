@@ -2065,3 +2065,54 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_resolutions_declaration_scan.py`.
+
+
+<!-- community-core:module-entry-declaration-scan -->
+### Offline module entry enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface the declared module ESM entry string from published package.json metadata without executing code, installing packages, reading archives or using network. It makes present-versus-absent entries and exact verbatim values reproducible and comparable across tarballs for manual follow-up against inventory hashes and main/bin/exports checks, and complements existing inventory hash comparison, name and semver syntax checks, main/bin/exports checks, and author, browser, bugs, bundled, dependency, description, directories, engines, files, funding, homepage, integrity, keywords, license, man, overrides, packageManager, peer meta, platform, publishConfig, repository, resolutions, scripts, sideEffects, type, types, typesVersions and workspaces checks which cover file bytes, identity, entrypoints and other declarations only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/module_entry_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, resolution or hook execution. Input payload must be a dict with required key module and optional positive-int budget max_length=512 with bools rejected and allowed 1 to 1024 inclusive; any non-dict payload, missing key, extra key, wrong budget type or out-of-range budget raises ValueError with fixed text Invalid module entry scan payload or budget without echoing input. module must be None for absent or str for present; strings include str subclasses without coercion; integers including 0 and 1, bools, floats, lists, dicts or other types raise the same fixed error with no coercion, trimming, fetching, normalization, resolution or repair. Str form must have code-point length 1 to max_length inclusive preserved verbatim with no trimming, case change, normalization, fetching, resolution or repair; empty strings or out-of-budget lengths raise the same fixed error. Returns a fresh dict with exactly declared and value; value is None when module is None else a fresh verbatim plain-str copy; declared is True when str present else False when None. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults. This is declaration enumeration only, not execution, installation, resolution, fetching, existence check, provenance verification, safety, security, compatibility or legal review; values are reported as declared.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "module": null
+  },
+  "output": {
+    "declared": false,
+    "value": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "module": "dist/esm/index.js"
+  },
+  "output": {
+    "declared": true,
+    "value": "dist/esm/index.js"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "max_length": 512,
+    "module": "lib/module.js"
+  },
+  "output": {
+    "declared": true,
+    "value": "lib/module.js"
+  }
+}
+```
+
+Public regression tests: `tests/test_community_module_entry_declaration_scan.py`.
