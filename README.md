@@ -1717,3 +1717,76 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_workspaces_declaration_scan.py`.
+
+
+<!-- community-core:overrides-declaration-scan -->
+### Offline npm overrides declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface declared npm overrides intent from published package.json metadata without executing code, installing packages, reading archives or using network. It makes present-versus-absent overrides and exact verbatim spec strings reproducible and comparable across tarballs for manual follow-up against inventory hashes and entrypoint checks, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, bugs, dependency, description, directories, engines, files, funding, homepage, integrity, keywords, license, man, packageManager, platform, publishConfig, repository, scripts, sideEffects, type, types and workspaces syntax checks which cover file bytes, identity, entrypoints and other declarations only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/overrides_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, resolution or hook execution. Input payload must be a dict with required key overrides and optional positive-int budgets max_entries=32 and max_length=256 (bools rejected, max_entries 1 to 64 inclusive, max_length 1 to 1024 inclusive); any non-dict payload, missing key, extra key, wrong budget type or out-of-range budget raises ValueError with fixed text Invalid overrides scan payload or budget without echoing input. overrides must be None for absent or dict for present; strings, integers including 0 and 1, bools, lists or other types raise the same fixed error with no coercion, trimming, fetching, normalization or repair. Dict form must contain 0 to max_entries keys inclusive; each top key must be str including str subclasses without coercion with code-point length 1 to max_length inclusive preserved verbatim with no trimming, case change, normalization, fetching or repair and without C0 control characters except LF CR TAB and without unpaired surrogates; each top value must be either such a str version spec with length 1 to max_length under the same character rules preserved verbatim or a nested dict with 1 to max_entries keys inclusive mapping override target to such a str version spec; each nested key follows the same str length and character rules preserved verbatim; empty strings, wrong types, disallowed characters, empty nested dicts, arrays, deeper nesting beyond one level, out-of-budget counts or lengths raise the same fixed error. Returns a fresh dict with exactly declared and entries; entries is None when overrides is None else a fresh sorted list by code points of fresh key and value dicts with verbatim strings, where nested dict values are fresh dicts with code-point-sorted insertion order and verbatim strings; empty dict yields entries [] with declared True; declared is True when dict present else False when None. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults. This is declaration enumeration only, not execution, installation, resolution, fetching, existence check, provenance verification, safety, security, compatibility or legal review; values are reported as declared.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "overrides": null
+  },
+  "output": {
+    "declared": false,
+    "entries": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "overrides": {
+      "lodash": "4.17.21"
+    }
+  },
+  "output": {
+    "declared": true,
+    "entries": [
+      {
+        "key": "lodash",
+        "value": "4.17.21"
+      }
+    ]
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "overrides": {
+      "aaa": "1.0.0",
+      "foo@2": {
+        "bar": "3.0.0"
+      }
+    }
+  },
+  "output": {
+    "declared": true,
+    "entries": [
+      {
+        "key": "aaa",
+        "value": "1.0.0"
+      },
+      {
+        "key": "foo@2",
+        "value": {
+          "bar": "3.0.0"
+        }
+      }
+    ]
+  }
+}
+```
+
+Public regression tests: `tests/test_community_overrides_declaration_scan.py`.
