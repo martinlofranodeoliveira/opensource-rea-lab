@@ -1996,3 +1996,72 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_typesversions_declaration_scan.py`.
+
+
+<!-- community-core:resolutions-declaration-scan -->
+### Offline resolutions pin enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface declared Yarn resolutions version pins from published package.json metadata without executing code, installing packages, reading archives or using network. It makes present-versus-absent maps and exact verbatim selector-to-pin entries reproducible and comparable across tarballs for manual follow-up against inventory hashes and entrypoint checks, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, bugs, bundled, dependency, description, directories, engines, files, funding, homepage, integrity, keywords, license, man, overrides, packageManager, peer meta, platform, publishConfig, repository, scripts, sideEffects, type, types, typesVersions and workspaces syntax checks which cover file bytes, identity, entrypoints and other declarations only, with npm overrides distinct from Yarn resolutions selectors.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/resolutions_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, resolution or hook execution. Input payload must be a dict with required key resolutions and optional positive-int budgets max_entries=64 with bools rejected and allowed 1 to 128 inclusive and max_length=256 with bools rejected and allowed 1 to 512 inclusive; any non-dict payload, missing key, extra key, wrong budget type or out-of-range budget raises ValueError with fixed text Invalid resolutions scan payload or budget without echoing input. resolutions must be None for absent or dict for present; strings, integers including 0 and 1, bools, floats, lists or other types raise the same fixed error with no coercion, trimming, fetching, normalization, resolution or repair. Dict form must contain 0 to max_entries keys inclusive; each selector key must be str including str subclasses without coercion with code-point length 1 to max_length inclusive preserved verbatim with no trimming, case change, normalization, fetching, resolution or repair and without C0 control characters except LF CR TAB and without unpaired surrogates; each pin value must be str including subclasses with same length and character and verbatim rules; empty strings, wrong types, disallowed characters or out-of-budget counts or lengths raise the same fixed error. Returns a fresh dict with exactly declared and entries; entries is None when resolutions is None else a fresh list sorted by selector code points of fresh selector and pin pairs where pin is a fresh verbatim copy; empty dict yields entries empty list with declared True; declared is True when dict present else False when None. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults. This is declaration enumeration only, not execution, installation, resolution, fetching, existence check, provenance verification, safety, security, compatibility or legal review; values are reported as declared.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "resolutions": null
+  },
+  "output": {
+    "declared": false,
+    "entries": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "resolutions": {
+      "lodash": "4.17.21"
+    }
+  },
+  "output": {
+    "declared": true,
+    "entries": [
+      {
+        "pin": "4.17.21",
+        "selector": "lodash"
+      }
+    ]
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "resolutions": {
+      "**/lodash": "4.17.21",
+      "react": "18.2.0"
+    }
+  },
+  "output": {
+    "declared": true,
+    "entries": [
+      {
+        "pin": "4.17.21",
+        "selector": "**/lodash"
+      },
+      {
+        "pin": "18.2.0",
+        "selector": "react"
+      }
+    ]
+  }
+}
+```
+
+Public regression tests: `tests/test_community_resolutions_declaration_scan.py`.
