@@ -1790,3 +1790,59 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_overrides_declaration_scan.py`.
+
+
+<!-- community-core:bundled-deps-declaration-scan -->
+### Offline bundled dependencies declaration enumerator for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to surface declared bundledDependencies intent from published package.json metadata without executing code, installing packages, reading archives or using network. It makes present-versus-absent lists and exact verbatim entry strings reproducible and comparable across tarballs for manual follow-up against inventory hashes and entrypoint checks, and complements existing inventory hash comparison, name and semver syntax checks, main bin exports checks, and author, browser, bugs, dependency, description, directories, engines, files, funding, homepage, integrity, keywords, license, man, overrides, packageManager, platform, publishConfig, repository, scripts, sideEffects, type, types and workspaces syntax checks which cover file bytes, identity, entrypoints and other declarations only.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/bundled_deps_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, resolution or hook execution. Input payload must be a dict with required key bundled and optional positive-int budgets max_entries=64 and max_length=214 (bools rejected, max_entries 1 to 128 inclusive, max_length 1 to 214 inclusive); any non-dict payload, missing key, extra key, wrong budget type or out-of-range budget raises ValueError with fixed text Invalid bundled dependencies scan payload or budget without echoing input. bundled must be None for absent or list for present; strings, integers including 0 and 1, bools, dicts or other types raise the same fixed error with no coercion, trimming, fetching, normalization or repair. List form must contain 0 to max_entries items inclusive; each item must be str including str subclasses without coercion with code-point length 1 to max_length inclusive preserved verbatim with no trimming, case change, normalization, fetching or repair and without C0 control characters except LF CR TAB and without unpaired surrogates; empty strings, wrong types, disallowed characters, duplicates, out-of-budget counts or lengths raise the same fixed error. Returns a fresh dict with exactly declared and entries; entries is None when bundled is None else a fresh list sorted by code points with verbatim strings; empty list yields entries [] with declared True; declared is True when list present else False when None. Inputs are never mutated and outputs share no mutable references with fresh containers each call. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults. This is declaration enumeration only, not execution, installation, resolution, fetching, existence check, provenance verification, safety, security, compatibility or legal review; values are reported as declared.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "bundled": [
+      "react",
+      "@scope/pkg"
+    ]
+  },
+  "output": {
+    "declared": true,
+    "entries": [
+      "@scope/pkg",
+      "react"
+    ]
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "bundled": null
+  },
+  "output": {
+    "declared": false,
+    "entries": null
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "bundled": []
+  },
+  "output": {
+    "declared": true,
+    "entries": []
+  }
+}
+```
+
+Public regression tests: `tests/test_community_bundled_deps_declaration_scan.py`.
