@@ -2116,3 +2116,100 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_module_entry_declaration_scan.py`.
+
+
+<!-- community-core:inventory-composition-summary -->
+### Offline inventory composition summary for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to summarize a published tarball inventory by file extension without reading archives, network, execution or installation. It aggregates validated path, size and hash records into totals and per-extension counts and bytes for triage and reproducible notes. It complements compare_inventories hash diffing, entrypoint verbatim comparison, name and SemVer syntax checks and manifest declaration scans which do not aggregate composition.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/inventory_composition_summary.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, extraction, resolution or hook execution. Input payload must be a dict with required key inventory and optional key max_entries default 20000 and no other keys; any non-dict payload, missing inventory key or extra key raises ValueError with fixed text Invalid inventory summary payload or budget without echoing input. The max_entries budget when present must be an exact int excluding bools in range 1 to 20000 inclusive; floats, bools, strings including subclasses, lists, dicts, None or out-of-range ints raise the same fixed payload error with no coercion, trimming, fetching, normalization, resolution or repair. The inventory value must be a list with length 0 to max_entries inclusive; longer lists raise the same fixed payload error. Each record must be a dict with exactly path, bytes and sha256 and no other keys; missing, extra or non-dict records raise ValueError with fixed text Invalid inventory record without echoing input. The path value must be str including subclasses accepted without coercion as plain str copy; other types raise the same fixed record error. Valid paths start with package/ prefix, length 9 to 256 inclusive, contain only printable ASCII without backslash, contain no empty segment, single dot, double dot, double slash, dot slash or dot dot slash sequences, do not end with slash, and are unique case-sensitively within the list; violations raise the same fixed record error with no normalization or fetching. The bytes value must be an exact int excluding bools in range 0 to 33554432 inclusive; other types or out-of-range values raise the same fixed record error. The sha256 value must be str including subclasses accepted without coercion as plain str copy with exactly 64 ASCII hexadecimal characters; other types, lengths or alphabets raise the same fixed record error, with ASCII case-insensitive validation and no coercion or fetching. No tar parsing, extraction, manifest fetching, range matching or resolution is performed. Aggregation is deterministic over validated records: total_files is list length, total_bytes is exact integer sum, and by_extension groups by lowercased ASCII suffix after the final dot in the basename, using empty string when the basename has no dot or only a leading dot, where basename is the substring after the final slash and lowercasing maps ASCII uppercase to lowercase only. Groups are sorted by extension ASCII code-point order. Returns a fresh dict with exactly total_files, total_bytes and by_extension in fixed order; total_files and total_bytes are ints, by_extension is a fresh sorted list of fresh dicts each with exactly extension, count and bytes in fixed order, where extension is fresh plain str, count is group length and bytes is group byte sum. Inputs are never mutated and outputs share no mutable references with fresh containers each call and deterministic ordering. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults, and API run_feature(payload) preserves input. This is composition enumeration only, not compatibility, provenance verification, safety, security or legal review; values are reported as declared.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "inventory": [
+      {
+        "bytes": 100,
+        "path": "package/index.js",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "bytes": 50,
+        "path": "package/README.md",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    ]
+  },
+  "output": {
+    "by_extension": [
+      {
+        "bytes": 100,
+        "count": 1,
+        "extension": "js"
+      },
+      {
+        "bytes": 50,
+        "count": 1,
+        "extension": "md"
+      }
+    ],
+    "total_bytes": 150,
+    "total_files": 2
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "inventory": []
+  },
+  "output": {
+    "by_extension": [],
+    "total_bytes": 0,
+    "total_files": 0
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "inventory": [
+      {
+        "bytes": 10,
+        "path": "package/.npmignore",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      {
+        "bytes": 20,
+        "path": "package/lib/Tool.JS",
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    ]
+  },
+  "output": {
+    "by_extension": [
+      {
+        "bytes": 10,
+        "count": 1,
+        "extension": ""
+      },
+      {
+        "bytes": 20,
+        "count": 1,
+        "extension": "js"
+      }
+    ],
+    "total_bytes": 30,
+    "total_files": 2
+  }
+}
+```
+
+Public regression tests: `tests/test_community_inventory_composition_summary.py`.
