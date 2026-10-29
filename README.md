@@ -2318,3 +2318,84 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_findings_tally_scan.py`.
+
+
+<!-- community-core:exports-wildcard-scan -->
+### Offline exports wildcard-pattern classifier for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to classify declared npm exports subpath keys and string targets into exact entries versus asterisk wildcard patterns without reading archives, network, execution, installation, extraction, resolution or normalization. It supports triage of the audit unverified-pattern reports by enumerating which declared keys and targets contain literal * for manual follow-up, complementing inventory hash diffing, verbatim entrypoint comparison, name and SemVer syntax checks, manifest declaration scans and findings tallies which do not flag wildcard semantics.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/exports_wildcard_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, extraction, resolution, normalization or hook execution. Input payload must be a dict with required key exports and optional keys max_entries default 64, max_length default 256, max_depth default 8 and no other keys; any non-dict payload, missing exports key or extra key raises ValueError with fixed text Invalid exports payload or budget without echoing input. The max_entries budget when present must be an exact int excluding bools in range 1 to 256 inclusive; the max_length budget when present must be an exact int excluding bools in range 1 to 1024 inclusive; the max_depth budget when present must be an exact int excluding bools in range 1 to 16 inclusive; floats, bools, strings including subclasses, lists, dicts, None or out-of-range ints raise the same fixed payload error with no coercion, trimming, fetching, normalization, resolution or repair. The exports value may be None, str including subclasses accepted without coercion as plain str copy, list, or dict; other types raise ValueError with fixed text Invalid exports declaration without echoing input. None at top level means absent. A str top level is a single target. A list must contain only str, list, dict or None elements; dicts must have str keys and values that are str, list, dict or None; any other element, key type or value type raises the same fixed declaration error. Each key and each str leaf must have length 1 to max_length inclusive; empty or over-long strings raise the same fixed declaration error with no trimming or repair. Traversal is iterative over explicitly supplied values only with root depth 1; nested list/dict containers add levels and exceeding max_depth raises the same fixed declaration error. Total visited entries defined as dict-key occurrences plus str-leaf occurrences plus nested None blocked entries must be 0 to max_entries inclusive; larger inputs raise the same fixed payload error. No tar parsing, extraction, manifest fetching, range matching, resolution, normalization or execution is performed; wildcard detection is exact literal asterisk code 42 containment in the declared string with no glob expansion. Aggregation is deterministic over validated values: declared is False only for top-level None else True; total_keys counts dict-key occurrences; total_targets counts str-leaf occurrences; wildcard_key_occurrences and wildcard_target_occurrences count occurrences containing asterisk; wildcard_keys and wildcard_targets are ASCII code-point sorted unique lists of those containing asterisk. Blocked None entries are allowed inside structures and counted toward max_entries but not toward totals or wildcard lists. Returns a fresh dict with exactly declared, total_keys, total_targets, wildcard_key_occurrences, wildcard_target_occurrences, wildcard_keys and wildcard_targets in fixed order; declared is bool, counts are ints, lists are fresh sorted lists of fresh plain str. Inputs are never mutated and outputs share no mutable references with fresh containers each call and deterministic ordering. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults, and API run_feature(payload) preserves input. This is pattern enumeration only, not compatibility, provenance verification, safety, security or legal review; values are reported as declared and wildcard status implies unverified pattern only.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "exports": {
+      ".": "./index.js",
+      "./features/*": "./features/*.js"
+    }
+  },
+  "output": {
+    "declared": true,
+    "total_keys": 2,
+    "total_targets": 2,
+    "wildcard_key_occurrences": 1,
+    "wildcard_keys": [
+      "./features/*"
+    ],
+    "wildcard_target_occurrences": 1,
+    "wildcard_targets": [
+      "./features/*.js"
+    ]
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "exports": "./index.js"
+  },
+  "output": {
+    "declared": true,
+    "total_keys": 0,
+    "total_targets": 1,
+    "wildcard_key_occurrences": 0,
+    "wildcard_keys": [],
+    "wildcard_target_occurrences": 0,
+    "wildcard_targets": []
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "exports": {
+      ".": {
+        "default": "./index.js",
+        "import": "./esm.js",
+        "require": "./cjs.js"
+      },
+      "./locale/*": null
+    }
+  },
+  "output": {
+    "declared": true,
+    "total_keys": 5,
+    "total_targets": 3,
+    "wildcard_key_occurrences": 1,
+    "wildcard_keys": [
+      "./locale/*"
+    ],
+    "wildcard_target_occurrences": 0,
+    "wildcard_targets": []
+  }
+}
+```
+
+Public regression tests: `tests/test_community_exports_wildcard_scan.py`.
