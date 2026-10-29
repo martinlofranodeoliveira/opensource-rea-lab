@@ -2213,3 +2213,108 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_inventory_composition_summary.py`.
+
+
+<!-- community-core:findings-tally-scan -->
+### Offline audit findings tally for reproducible triage
+
+Gives REA Lab reviewers a fast offline way to tally published npm-tarball audit findings by severity and code without re-reading archives, network, execution or installation. It aggregates validated error and warning records into totals and per-code counts for reproducible notes and triage follow-up against identity, integrity, inventory hash comparison, entrypoint comparison, name and SemVer syntax checks and manifest declaration scans which do not summarize finding severity. It complements file diffing and verbatim declaration comparison with findings-level counting distinct as severity totals and ASCII-sorted per-code grouping over caller-supplied records.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/findings_tally_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, extraction, resolution or hook execution. Input payload must be a dict with required key findings and optional key max_entries default 256 and no other keys; any non-dict payload, missing findings key or extra key raises ValueError with fixed text Invalid findings payload or budget without echoing input. The max_entries budget when present must be an exact int excluding bools in range 1 to 500 inclusive; floats, bools, strings including subclasses, lists, dicts, None or out-of-range ints raise the same fixed payload error with no coercion, trimming, fetching, normalization, resolution or repair. The findings value must be a list with length 0 to max_entries inclusive; longer lists raise the same fixed payload error. Each record must be a dict with exactly code and severity and no other keys; missing, extra or non-dict records raise ValueError with fixed text Invalid finding record without echoing input. The code value must be str including subclasses accepted without coercion as plain str copy with length 1 to 64 inclusive matching [A-Za-z0-9_/-]+ with no leading, trailing or doubled slash; other types, lengths or alphabets raise the same fixed record error with no coercion, trimming or fetching. The severity value must be exact str error or warning case-sensitive; other types or values raise the same fixed record error. No tar parsing, extraction, manifest fetching, range matching, resolution or normalization is performed. Aggregation is deterministic over validated records: total is list length, errors is count with severity error, warnings is count with severity warning, and by_code groups by code sorted ASCII code-point order. Returns a fresh dict with exactly total, errors, warnings and by_code in fixed order; total, errors and warnings are ints, by_code is a fresh sorted list of fresh dicts each with exactly code, count, errors and warnings in fixed order, where code is fresh plain str, count is group length, errors is group error count and warnings is group warning count. Inputs are never mutated and outputs share no mutable references with fresh containers each call and deterministic ordering. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults, and API run_feature(payload) preserves input. This is findings enumeration only, not compatibility, provenance verification, safety, security or legal review; values are reported as declared.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "findings": []
+  },
+  "output": {
+    "by_code": [],
+    "errors": 0,
+    "total": 0,
+    "warnings": 0
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "findings": [
+      {
+        "code": "manifest_identity",
+        "severity": "error"
+      },
+      {
+        "code": "manifest_identity",
+        "severity": "warning"
+      }
+    ]
+  },
+  "output": {
+    "by_code": [
+      {
+        "code": "manifest_identity",
+        "count": 2,
+        "errors": 1,
+        "warnings": 1
+      }
+    ],
+    "errors": 1,
+    "total": 2,
+    "warnings": 1
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "findings": [
+      {
+        "code": "manifest_version",
+        "severity": "error"
+      },
+      {
+        "code": "identity_mismatch",
+        "severity": "warning"
+      },
+      {
+        "code": "manifest_identity",
+        "severity": "error"
+      }
+    ],
+    "max_entries": 256
+  },
+  "output": {
+    "by_code": [
+      {
+        "code": "identity_mismatch",
+        "count": 1,
+        "errors": 0,
+        "warnings": 1
+      },
+      {
+        "code": "manifest_identity",
+        "count": 1,
+        "errors": 1,
+        "warnings": 0
+      },
+      {
+        "code": "manifest_version",
+        "count": 1,
+        "errors": 1,
+        "warnings": 0
+      }
+    ],
+    "errors": 2,
+    "total": 3,
+    "warnings": 1
+  }
+}
+```
+
+Public regression tests: `tests/test_community_findings_tally_scan.py`.
