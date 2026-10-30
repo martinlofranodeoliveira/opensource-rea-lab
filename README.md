@@ -2399,3 +2399,89 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_exports_wildcard_scan.py`.
+
+
+<!-- community-core:claim-evidence-presence-check -->
+### Offline claim-versus-evidence presence check for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to triage caller-declared entrypoint file claims against synthetic inventory evidence without reading archives, network, execution, installation, extraction or resolution. It reports which claimed targets are present or missing for manual follow-up, supporting exact local bin exports and main review and ROADMAP entrypoint semantics without claiming Node resolution. It complements inventory hash diffing, verbatim entrypoint comparison, SemVer and package-name syntax checks, wildcard-pattern enumeration and verbatim declaration scans which do not test claim-versus-evidence membership.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/claim_evidence_presence_check.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, extraction, tar parsing, manifest fetching, normalization, glob expansion, resolution or hook execution beyond exact string membership. Input payload must be a dict with required keys targets and inventory and optional keys max_targets default 32 and max_files default 1000 and no other keys; any non-dict payload, missing key or extra key raises ValueError with fixed text Invalid entry presence payload or budget without echoing input. Each budget when present must be an exact int excluding bools: max_targets 1 to 64 inclusive, max_files 1 to 2000 inclusive; floats, bools, strings including subclasses, lists, dicts, None or out-of-range ints raise the same fixed payload error with no coercion, trimming, fetching, normalization or repair. The targets value must be a list with length 0 to max_targets inclusive; longer or non-list raises ValueError with fixed text Invalid entrypoint claim declaration without echoing input. The inventory value must be a list with length 0 to max_files inclusive; longer or non-list raises ValueError with fixed text Invalid inventory evidence declaration without echoing input. Each target and each inventory entry must be str including subclasses accepted without coercion as plain str copy with length 1 to 256 inclusive; other types or lengths raise the respective fixed declaration error for its list. Duplicate case-sensitive entries within targets or within inventory each raise the respective fixed declaration error. No trimming, case folding, normalization, glob expansion, resolution, tar parsing, extraction, manifest fetching or execution is performed; membership is exact case-sensitive string equality only. Aggregation is deterministic: build inventory set, for each target in input order test membership, collect present and missing as ASCII code-point sorted lists of fresh plain str, counts are lengths, total is targets length, is_complete is True only when missing is empty else False. Returns a fresh dict with exactly total, present_count, missing_count, present, missing and is_complete in fixed order; counts are ints, lists are fresh sorted lists of fresh plain str, flag is bool. Inputs are never mutated and outputs share no mutable references with fresh containers each call and deterministic ordering. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults, and API run_feature(payload) preserves input. This is presence triage only, not compatibility, provenance verification, safety, security or legal review; values are reported as declared and present does not imply executable safety while missing implies manual review only and invalid does not imply malware.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "inventory": [
+      "package/README.md",
+      "package/cli.js",
+      "package/index.js"
+    ],
+    "targets": [
+      "package/index.js",
+      "package/cli.js"
+    ]
+  },
+  "output": {
+    "is_complete": true,
+    "missing": [],
+    "missing_count": 0,
+    "present": [
+      "package/cli.js",
+      "package/index.js"
+    ],
+    "present_count": 2,
+    "total": 2
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "inventory": [
+      "package/index.js"
+    ],
+    "targets": [
+      "package/index.js",
+      "package/missing.js"
+    ]
+  },
+  "output": {
+    "is_complete": false,
+    "missing": [
+      "package/missing.js"
+    ],
+    "missing_count": 1,
+    "present": [
+      "package/index.js"
+    ],
+    "present_count": 1,
+    "total": 2
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "inventory": [
+      "package/index.js"
+    ],
+    "targets": []
+  },
+  "output": {
+    "is_complete": true,
+    "missing": [],
+    "missing_count": 0,
+    "present": [],
+    "present_count": 0,
+    "total": 0
+  }
+}
+```
+
+Public regression tests: `tests/test_community_claim_evidence_presence_check.py`.
