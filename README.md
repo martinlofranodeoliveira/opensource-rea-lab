@@ -2485,3 +2485,91 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_claim_evidence_presence_check.py`.
+
+
+<!-- community-core:bin-declaration-scan -->
+### Offline bin declaration scan for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to triage caller-declared package bin entries without archives, network, execution, installation, extraction or resolution. It reports absent, empty, string or map kinds with per-entry command-name syntax and per-target relative-path shape and bounds with sorted entries for manual follow-up, supporting reproducible review of executable entry declarations. It complements inventory hash diffing, verbatim entrypoint comparison, SemVer and package-name syntax checks, browser remap and wildcard-pattern enumeration which do not validate bin key and target shape.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/bin_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, extraction, resolution, fetching, tar parsing, manifest fetching, normalization or hook execution. Input payload must be a dict with required key bin and optional keys max_entries default 16 and max_key_length default 64 and max_value_length default 256 and no other keys; any non-dict payload, missing key or extra key raises ValueError with fixed text Invalid bin payload or budget without echoing input. Each budget when present must be an exact int excluding bools: max_entries 1 to 64 inclusive, max_key_length 1 to 128 inclusive, max_value_length 1 to 512 inclusive; floats, bools, strings including subclasses, lists, dicts, None or out-of-range ints raise the same fixed payload error with no coercion, trimming, fetching, normalization or repair. The bin value must be None denoting absent or str including subclasses accepted without coercion as plain str copy or dict mapping str including subclasses keys to str values; other types including ints, bools, floats, lists as top value raise ValueError with fixed text Invalid bin declaration without echoing input. Dict size 0 to max_entries inclusive else same declaration error; non-str keys or non-str values raise same declaration error. No trimming, case folding, resolution, tar parsing, extraction, manifest fetching or execution is performed. Key syntax is exact local ASCII policy: length 1 to max_key_length inclusive counted in code points, characters a-z 0-9 dot underscore hyphen only starting with a-z or 0-9; other spelling is key_syntax. String targets must be length 1 to max_value_length inclusive else value_length. Otherwise value_syntax when any of backslash present, absolute starting with slash, empty slash segment or trailing slash, single-dot or double-dot segment, solitary dot or dot-slash-only, star or colon present, or code point below 32 or equal 127; leading single dot-slash prefix when present is stripped once before segment checks; other spelling is valid. Reasons are collected in fixed order key_syntax, value_length, value_syntax; valid when empty. Target kinds are string when str value, map when non-empty dict, empty when empty dict, absent when None. Aggregation is deterministic: for string form single entry with null key, for map form sort entries by ASCII code points, count total valid_count invalid_count, build fresh entries with key as plain str or null, target as plain str, valid bool, reasons fresh fixed-order list of fresh plain strs. Returns fresh dict with exactly present, kind, total, valid_count, invalid_count, entries in fixed order; present bool true unless bin None, kind absent or empty or string or map as fresh plain str, counts ints, entries fresh list of fresh dicts. Inputs are never mutated and outputs share no mutable references with fresh containers each call and deterministic ordering. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults, and API run_feature(payload) preserves input. This is bin declaration triage only, not compatibility, provenance verification, safety, security or legal review; values are reported as declared and valid syntax does not imply resolvable, safe or installable while invalid does not imply malware.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "bin": null
+  },
+  "output": {
+    "entries": [],
+    "invalid_count": 0,
+    "kind": "absent",
+    "present": false,
+    "total": 0,
+    "valid_count": 0
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "bin": "bin/cli.js"
+  },
+  "output": {
+    "entries": [
+      {
+        "key": null,
+        "reasons": [],
+        "target": "bin/cli.js",
+        "valid": true
+      }
+    ],
+    "invalid_count": 0,
+    "kind": "string",
+    "present": true,
+    "total": 1,
+    "valid_count": 1
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "bin": {
+      "Bad!": "../evil",
+      "tool": "bin/cli.js"
+    }
+  },
+  "output": {
+    "entries": [
+      {
+        "key": "Bad!",
+        "reasons": [
+          "key_syntax",
+          "value_syntax"
+        ],
+        "target": "../evil",
+        "valid": false
+      },
+      {
+        "key": "tool",
+        "reasons": [],
+        "target": "bin/cli.js",
+        "valid": true
+      }
+    ],
+    "invalid_count": 1,
+    "kind": "map",
+    "present": true,
+    "total": 2,
+    "valid_count": 1
+  }
+}
+```
+
+Public regression tests: `tests/test_community_bin_declaration_scan.py`.
