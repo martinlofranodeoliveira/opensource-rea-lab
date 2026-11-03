@@ -2573,3 +2573,101 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_bin_declaration_scan.py`.
+
+
+<!-- community-core:volta-declaration-scan -->
+### Offline volta declaration scan for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to triage caller-declared volta toolchain pins without archives, network, execution, installation, extraction or resolution. It reports absent, empty or pinned kinds with per-entry tool-name allowlist and per-target dotted numeric pin shape and bounds with sorted entries for manual follow-up, supporting reproducible review of build portability declarations. It complements inventory hash diffing, verbatim entrypoint comparison, SemVer and package-name syntax checks, browser remap, wildcard-pattern enumeration, bin, engines and packageManager declaration scans which do not validate volta keys or pin shape.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/volta_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, extraction, resolution, fetching, tar parsing, manifest fetching, normalization or hook execution. Input payload must be a dict with required key volta and optional keys max_entries default 8 and max_key_length default 16 and max_value_length default 64 and no other keys; any non-dict payload, missing key or extra key raises ValueError with fixed text Invalid volta payload or budget without echoing input. Each budget when present must be an exact int excluding bools: max_entries 1 to 16 inclusive, max_key_length 1 to 32 inclusive, max_value_length 1 to 128 inclusive; floats, bools, strings including subclasses, lists, dicts, None or out-of-range ints raise the same fixed payload error with no coercion, trimming, fetching, normalization or repair. The volta value must be None denoting absent or dict mapping str including subclasses keys to str including subclasses values accepted without coercion as plain str copies; other types including ints, bools, floats, lists, strs as top value raise ValueError with fixed text Invalid volta declaration without echoing input. Dict size 0 to max_entries inclusive else same declaration error; non-str keys or non-str values raise same declaration error. No trimming, case folding, resolution, tar parsing, extraction, manifest fetching or execution is performed. Key syntax is exact local ASCII allowlist: key length 1 to max_key_length inclusive counted in code points and key equal to one of node npm yarn pnpm else reason key_name. String targets must be length 1 to max_value_length inclusive else reason value_length. Otherwise reason value_syntax when target is not 1 to 4 dot-separated parts of 1 to 8 ASCII digits each with no empty part leading or trailing dot or any other character including star colon caret tilde pipe whitespace plus hyphen or code point below 32 or equal 127; other spelling is valid. Reasons are collected in fixed order key_name, value_length, value_syntax; valid when empty. Target kinds are absent when None, empty when empty dict, pinned when non-empty dict. Aggregation is deterministic: sort entries by ASCII code points, count total valid_count invalid_count, build fresh entries with key as plain str, target as plain str copy, valid bool, reasons fresh fixed-order list of fresh plain strs. Returns fresh dict with exactly present, kind, total, valid_count, invalid_count, entries in fixed order; present bool true unless volta None, kind absent or empty or pinned as fresh plain str, counts ints, entries fresh list of fresh dicts. Inputs are never mutated and outputs share no mutable references with fresh containers each call and deterministic ordering. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults, and API run_feature(payload) preserves input. This is volta declaration triage only, not compatibility, provenance verification, safety, security or legal review; values are reported as declared and valid syntax does not imply resolvable, safe or installable while invalid does not imply malware.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "volta": {
+      "node": "18.17.1",
+      "npm": "9.6.7"
+    }
+  },
+  "output": {
+    "entries": [
+      {
+        "key": "node",
+        "reasons": [],
+        "target": "18.17.1",
+        "valid": true
+      },
+      {
+        "key": "npm",
+        "reasons": [],
+        "target": "9.6.7",
+        "valid": true
+      }
+    ],
+    "invalid_count": 0,
+    "kind": "pinned",
+    "present": true,
+    "total": 2,
+    "valid_count": 2
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "volta": null
+  },
+  "output": {
+    "entries": [],
+    "invalid_count": 0,
+    "kind": "absent",
+    "present": false,
+    "total": 0,
+    "valid_count": 0
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "volta": {
+      "node": "^18.0.0",
+      "yarn": ""
+    }
+  },
+  "output": {
+    "entries": [
+      {
+        "key": "node",
+        "reasons": [
+          "value_syntax"
+        ],
+        "target": "^18.0.0",
+        "valid": false
+      },
+      {
+        "key": "yarn",
+        "reasons": [
+          "value_length"
+        ],
+        "target": "",
+        "valid": false
+      }
+    ],
+    "invalid_count": 2,
+    "kind": "pinned",
+    "present": true,
+    "total": 2,
+    "valid_count": 0
+  }
+}
+```
+
+Public regression tests: `tests/test_community_volta_declaration_scan.py`.
