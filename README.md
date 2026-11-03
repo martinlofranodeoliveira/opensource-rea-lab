@@ -2671,3 +2671,64 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_volta_declaration_scan.py`.
+
+
+<!-- community-core:main-entry-declaration-scan -->
+### Offline main entry declaration scan for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to triage caller-declared main entry strings without archives network execution installation extraction or resolution. It reports absent versus declared with relative-path shape traversal and absolute-path checks and fixed reasons for manual follow-up supporting reproducible review of entrypoint semantics. It complements inventory hash diffing verbatim entrypoint comparison SemVer and package-name syntax checks bin browser remap wildcard-pattern enumeration and module type types declaration scans which do not validate main shape.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/main_entry_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as pure deterministic JSON core with no I/O filesystem network processes time randomness callbacks dependencies or package-code execution installation extraction resolution fetching tar parsing manifest fetching normalization or hook execution. Input payload must be dict with required key main and optional key max_length default 256 and no other keys; any non-dict payload missing key or extra key raises ValueError with fixed text Invalid main payload or budget without echoing input. Budget max_length when present must be exact int excluding bools 1 to 512 inclusive; floats bools strings including subclasses lists dicts None or out-of-range ints raise same fixed payload error with no coercion trimming fetching normalization or repair. Main value must be None denoting absent or str including subclasses accepted without coercion as plain str copy; other types including ints bools floats lists dicts raise ValueError with fixed text Invalid main declaration without echoing input. No trimming case folding resolution tar parsing extraction manifest fetching or execution is performed. Length is counted in code points 1 to max_length inclusive else reason value_length. Otherwise reason value_syntax when target contains reverse solidus or colon or codepoint below 32 or equal 127 or starts with slash or equals dot or equals dot-slash or ends with slash or after stripping one leading dot-slash prefix when present slash-split contains empty segment or single-dot or double-dot segment. Reasons collected in fixed order value_length value_syntax; valid when empty. Kinds are absent when None declared when str. Returns fresh dict with exactly present kind valid target reasons in fixed order; present bool true unless main None kind absent or declared as fresh plain str valid bool true when absent or reasons empty target null when absent else fresh plain str copy reasons fresh list of fresh plain strs. Inputs never mutated and outputs share no mutable references with fresh containers each call and deterministic ordering. Implementation uses only math re json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators classes async generators globals nonlocals attribute assignment or deletion dynamic calls or mutable defaults and API run_feature(payload) preserves input. This is main-entry declaration triage only not compatibility provenance verification safety security or legal review; values reported as declared and valid syntax does not imply resolvable safe or installable while invalid does not imply malware.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "main": "index.js"
+  },
+  "output": {
+    "kind": "declared",
+    "present": true,
+    "reasons": [],
+    "target": "index.js",
+    "valid": true
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "main": null
+  },
+  "output": {
+    "kind": "absent",
+    "present": false,
+    "reasons": [],
+    "target": null,
+    "valid": true
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "main": "../escape.js"
+  },
+  "output": {
+    "kind": "declared",
+    "present": true,
+    "reasons": [
+      "value_syntax"
+    ],
+    "target": "../escape.js",
+    "valid": false
+  }
+}
+```
+
+Public regression tests: `tests/test_community_main_entry_declaration_scan.py`.
