@@ -2732,3 +2732,103 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `tests/test_community_main_entry_declaration_scan.py`.
+
+
+<!-- community-core:libc-declaration-scan -->
+### Offline libc declaration scan for reproducible audits
+
+Gives REA Lab reviewers a fast offline way to triage caller-declared libc portability entries without archives, network, execution, installation, extraction or resolution. It reports absent versus empty versus listed kinds with per-entry length and local ASCII shape checks and sorted entries for manual follow-up, supporting reproducible review of libc-specific build portability declarations. It complements inventory hash diffing, verbatim entrypoint comparison, SemVer and package-name syntax checks, bin, browser remap, wildcard-pattern enumeration, engines, platform, dependency and volta declaration scans which do not validate libc entry shape.
+
+Reusable deterministic JSON core: `src/npm_tarball_audit/features/libc_declaration_scan.py`, API `run_feature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes run_feature(payload) as a pure deterministic JSON core with no I/O, filesystem, network, processes, time, randomness, callbacks, dependencies, or package-code execution, installation, extraction, resolution, fetching, tar parsing, manifest fetching, normalization or hook execution. Input payload must be a dict with required key libc and optional keys max_entries default 8 and max_value_length default 32 and no other keys; any non-dict payload, missing key or extra key raises ValueError with fixed text Invalid libc payload or budget without echoing input. Each budget when present must be an exact int excluding bools: max_entries 1 to 16 inclusive, max_value_length 1 to 64 inclusive; floats, bools, strings including subclasses, lists, dicts, None or out-of-range ints raise the same fixed payload error with no coercion, trimming, fetching, normalization or repair. The libc value must be None denoting absent or list of str including subclasses accepted without coercion as plain str copies; other types including ints, bools, floats, dicts, strs as top value raise ValueError with fixed text Invalid libc declaration without echoing input. List size 0 to max_entries inclusive else same declaration error; non-str elements raise same declaration error. No trimming, case folding, resolution, tar parsing, extraction, manifest fetching or execution is performed. Entry syntax is local ASCII: length 1 to max_value_length inclusive counted in code points else reason value_length. Otherwise reason value_syntax when first code point is not lower a-z or 0-9 or any remaining code point is not lower a-z or 0-9 or hyphen or underscore or any code point below 32 or equal 127 or backslash or slash or colon or whitespace present. Reasons collected in fixed order value_length, value_syntax; valid when empty. Kinds are absent when None, empty when empty list, listed when non-empty list. Aggregation is deterministic: sort entries by ASCII code points, count total valid_count invalid_count, build fresh entries with value as plain str copy, valid bool, reasons fresh fixed-order list of fresh plain strs. Returns fresh dict with exactly present, kind, total, valid_count, invalid_count, entries in fixed order; present bool true unless libc None, kind absent or empty or listed as fresh plain str, counts ints, entries fresh list of fresh dicts. Inputs are never mutated and outputs share no mutable references with fresh containers each call and deterministic ordering. Implementation uses only math, re, json and unicodedata with plain functions and immutable literal module constants with local mutable containers and no decorators, classes, async, generators, globals, nonlocals, attribute assignment or deletion, dynamic calls or mutable defaults, and API run_feature(payload) preserves input. This is libc declaration triage only, not compatibility, provenance verification, safety, security or legal review; values are reported as declared and valid syntax does not imply resolvable, safe or installable while invalid does not imply malware.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "libc": null
+  },
+  "output": {
+    "entries": [],
+    "invalid_count": 0,
+    "kind": "absent",
+    "present": false,
+    "total": 0,
+    "valid_count": 0
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "libc": [
+      "musl",
+      "glibc"
+    ]
+  },
+  "output": {
+    "entries": [
+      {
+        "reasons": [],
+        "valid": true,
+        "value": "glibc"
+      },
+      {
+        "reasons": [],
+        "valid": true,
+        "value": "musl"
+      }
+    ],
+    "invalid_count": 0,
+    "kind": "listed",
+    "present": true,
+    "total": 2,
+    "valid_count": 2
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "libc": [
+      "glibc",
+      "Glibc",
+      "a/b"
+    ]
+  },
+  "output": {
+    "entries": [
+      {
+        "reasons": [
+          "value_syntax"
+        ],
+        "valid": false,
+        "value": "Glibc"
+      },
+      {
+        "reasons": [
+          "value_syntax"
+        ],
+        "valid": false,
+        "value": "a/b"
+      },
+      {
+        "reasons": [],
+        "valid": true,
+        "value": "glibc"
+      }
+    ],
+    "invalid_count": 2,
+    "kind": "listed",
+    "present": true,
+    "total": 3,
+    "valid_count": 1
+  }
+}
+```
+
+Public regression tests: `tests/test_community_libc_declaration_scan.py`.
